@@ -73,6 +73,7 @@ elsoc_long_2016_2021 %>%
   mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
          spb_rec = factor(cut(spb, breaks = c(0,2.75,3.75,5)),
                                   labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo"))) %>%
+  as_label(ola) %>% 
   prop(x = spb_rec, by = ola, na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = ola, fill = spb_rec, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
@@ -85,11 +86,11 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) +
 labs(x = NULL, y = NULL, 
-     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos)')
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos).\nNota 2: Pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "Este barrio es parte de mi" o "Me siento integrado/a en este barrio".')
 ```
 
 
-```{r spb-ola-zona, fig.cap = 'Nivel de pertenencia al barrio según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r spb-ola-zona, fig.cap = 'Nivel de pertenencia al barrio según ola y zona'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t02_01, t02_02, t02_03, t02_04)) %>% 
   mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
@@ -115,10 +116,11 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) +
   labs(x = NULL, y = NULL, title = NULL,
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: Pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "Este barrio es parte de mi" o "Me siento integrado/a en este barrio".')
 ```
 
-```{r spb-ola-estrato, fig.cap = 'Nivel de pertenencia al barrio según ola y tipo de ciudad, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r spb-ola-estrato, fig.cap = 'Nivel de pertenencia al barrio según ola y tipo de ciudad'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t02_01, t02_02, t02_03, t02_04)) %>% 
   mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
@@ -134,8 +136,6 @@ elsoc_long_2016_2021 %>%
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
   theme_bw() + 
   geom_col(position = 'dodge2') +
-  ylab(label = NULL) +
-  xlab(label = NULL) +
   scale_y_continuous(labels = scales::percent,
                      limits = c(0, 1)) +
   scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
@@ -144,13 +144,15 @@ elsoc_long_2016_2021 %>%
         legend.title = element_blank()) +
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
-            size = 3) +
+            size = 2.5) +
   labs(x = NULL, y = NULL, title = NULL,
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: Pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "Este barrio es parte de mi" o "Me siento integrado/a en este barrio".')
 
 ```
 
-```{r spb-quintil, fig.cap = 'Nivel de pertenencia al barrio según quintil de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r spb-ola-quintil, fig.cap = 'Nivel de pertenencia al barrio según quintil de ingresos y ola del estudio'}
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t02_01, t02_02, t02_03, t02_04),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
@@ -190,7 +192,58 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(y = NULL, x = NULL, title = NULL, 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: Pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "Este barrio es parte de mi" o "Me siento integrado/a en este barrio".')
+```
+
+
+```{r spb-ola-quintil-zona, fig.cap = 'Nivel de pertenencia al barrio según ola, quintil y zona'}
+
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t02_01, t02_02, t02_03, t02_04),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(
+  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar,
+  spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
+         spb_rec = factor(cut(spb, breaks = c(0,2.75,3.75,5)),
+                                  labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo")),
+  zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
+         ) %>%
+  ungroup() %>% 
+  prop(spb_rec, by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  filter(spb_rec == "De acuerdo o\ntotalmente de acuerdo") %>% 
+  as_label(ola) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: La pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "Este barrio es parte de mi" o "Me siento integrado/a en este barrio".')
 ```
 
 ## 1.2. Arraigo al barrio
@@ -198,8 +251,12 @@ elsoc_long_2016_2021 %>%
 ```{r arraigo-ola, fig.cap = 'Deseo de movilidad residencial según ola de estudio.'}
 
 elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & muestra == 1 & !is_nsnr(t05)) %>% 
-  sjlabelled::as_label(ola, t05) %>%
+  filter(tipo_atricion == 1 & muestra == 1 & !is_nsnr(t05)) %>%
+  mutate(t05 = factor(t05, labels = c("Si, a otro barrio\nde la comuna", 
+                                      "Si, a otra comuna", 
+                                      "No, porque estoy\nbien donde estoy", 
+                                      "No, no puedo\naunque quisiera"))) %>%
+  as_label(ola, t05) %>%
   prop(x = t05, by = ola, na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = ola, fill = t05, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
@@ -215,7 +272,7 @@ labs(x = NULL, y = NULL,
      caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos)')
 ```
 
-```{r arraigo-zona, fig.cap = 'Deseo de movilidad residencial según zona geográfica y ola del estudio, porcentaje que responde "No, porque estoy bien donde estoy"'}
+```{r arraigo-ola-zona, fig.cap = 'Deseo de movilidad residencial según zona geográfica y ola del estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% 4:5 & !t05 %in% c(-888, -999)) %>% 
@@ -223,9 +280,8 @@ elsoc_long_2016_2021 %>%
                                     "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
                         levels = 1:4,
                         labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
-  sjlabelled::as_label(t05, ola) %>%
-  prop(x = t05, by = c(ola, zona1), na.rm = TRUE) %>% 
-  filter(t05 == 'No, porque estoy bien donde estoy') %>%
+  as_label(ola) %>%
+  prop(t05 == 3, by = c(ola, zona1), na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = zona1, fill = ola, 
              label = scales::percent(prop, accuracy = .1))) + 
   theme_bw() + 
@@ -239,20 +295,20 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) +
 labs(x = NULL, y = NULL, title = NULL, 
+     subtitle = 'Porcentaje que responde "No, porque estoy bien donde estoy"',
      caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r arraigo-estrato, fig.cap = 'Deseo de movilidad residencial según tipo de ciudad y ola del estudio, porcentaje que responde No, porque estoy bien donde estoy'}
+```{r arraigo-ola-estrato, fig.cap = 'Deseo de movilidad residencial según tipo de ciudad y ola del estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% 4:5 & !t05 %in% c(-888, -999)) %>% 
   mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
                           labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
                                      'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
-  sjlabelled::as_label(t05, ola) %>%
-  prop(x = t05, by = c(ola, estrato), na.rm = TRUE) %>% 
-  filter(t05 == 'No, porque estoy bien donde estoy') %>%
+  as_label(ola) %>%
+  prop(t05 == 3, by = c(ola, estrato), na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = estrato, fill = ola, 
              label = scales::percent(prop, accuracy = .1))) + 
   theme_bw() + 
@@ -266,11 +322,12 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) +
 labs(x = NULL, y = NULL, title = NULL, 
+     subtitle = 'Porcentaje que responde "No, porque estoy bien donde estoy"',
      caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r arraigo-quintil, fig.cap = 'Deseo de movilidad residencial según quintil de ingresos y ola del estudio'}
+```{r arraigo-ola-quintil, fig.cap = 'Deseo de movilidad residencial según quintil de ingresos y ola del estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & !is_nsnr(t05),
@@ -291,7 +348,7 @@ elsoc_long_2016_2021 %>%
          quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
          ) %>%
   ungroup() %>% 
-  prop(t05 %in% 1:2, by = c(quintil, ola), na.rm = TRUE) %>% 
+  prop(t05 == 3 , by = c(quintil, ola), na.rm = TRUE) %>% 
   as_label(ola) %>% 
   filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
   ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
@@ -306,6 +363,51 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "No, porque estoy bien donde estoy"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+```
+
+```{r arraigo-ola-quintil-zona, fig.cap = 'Deseo de movilidad residencial según quintil, ola y zona'}
+
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(t05),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}')),
+         zona1 = factor(car::recode(region_cod, 
+                                    "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = 1:4,
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  ungroup() %>% 
+  prop(t05 == 3 , by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  as_label(ola) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "No, porque estoy bien donde estoy"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
 ```
 
@@ -320,6 +422,7 @@ elsoc_long_2016_2021 %>%
   mutate(soci = (t03_01 + t03_02 + t03_03 + t03_04)/4,
          soci_rec = factor(cut(soci, breaks = c(0,2.75,3.75,5)),
                                   labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo"))) %>%
+  as_label(ola) %>% 
   prop(x = soci_rec, by = ola, na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = ola, fill = soci_rec, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
@@ -332,10 +435,11 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) +
 labs(x = NULL, y = NULL, 
-     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos)')
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "La gente en este barrio es sociable" o "La gente en este barrio es colaboradora".')
 ```
 
-```{r soci-olas-zona, fig.cap = 'Nivel de sociabilidad barrial según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r soci-ola-zona, fig.cap = 'Nivel de sociabilidad barrial según ola y zona'}
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t03_01, t03_02, t03_03, t03_04)) %>% 
   mutate(soci = (t03_01 + t03_02 + t03_03 + t03_04)/4,
@@ -360,12 +464,12 @@ elsoc_long_2016_2021 %>%
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
             size = 3) +
-  labs(x = NULL, y = NULL,
-       title = NULL,
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "La gente en este barrio es sociable" o "La gente en este barrio es colaboradora".')
 ```
 
-```{r soci-olas-estrato, fig.cap = 'Nivel de sociabilidad barrial según ola y tipo de ciudad, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r soci-ola-estrato, fig.cap = 'Nivel de sociabilidad barrial según ola y tipo de ciudad'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t03_01, t03_02, t03_03, t03_04)) %>% 
   mutate(soci = (t03_01 + t03_02 + t03_03 + t03_04)/4,
@@ -389,14 +493,15 @@ elsoc_long_2016_2021 %>%
         legend.title = element_blank()) +
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
-            size = 3) +
-  labs(x = NULL, y = NULL,
-       title = NULL,
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "La gente en este barrio es sociable" o "La gente en este barrio es colaboradora".')
 
 ```
 
-```{r soci-quintil, fig.cap = 'Nivel de sociabilidad barrial según quintil de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r soci-ola-quintil, fig.cap = 'Nivel de sociabilidad barrial según quintil de ingresos y ola del estudio'}
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t03_01, t03_02, t03_03, t03_04),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
@@ -436,7 +541,56 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(y = NULL, x = NULL, title = NULL, 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "La gente en este barrio es sociable" o "La gente en este barrio es colaboradora".')
+```
+
+```{r soci-ola-quintil-zona, fig.cap = 'Nivel de sociabilidad barrial según ola, quintil y zona'}
+
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(t03_01, t03_02, t03_03, t03_04),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(
+  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar,
+  soci = (t03_01 + t03_02 + t03_03 + t03_04)/4,
+  soci_rec = factor(cut(soci, breaks = c(0,2.75,3.75,5)),
+                    labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo"))) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}')),
+         zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  ungroup() %>% 
+  prop(soci_rec, by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  filter(soci_rec == "De acuerdo o\ntotalmente de acuerdo") %>% 
+  as_label(ola) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con afirmaciones como "La gente en este barrio es sociable" o "La gente en este barrio es colaboradora".')
 ```
 
 ## 2.2. Confianza en vecinos
@@ -465,7 +619,7 @@ labs(x = NULL, y = NULL, caption = 'Fuente: Elaboración propia en base a datos 
 
 ```
 
-```{r vecinos-zona, fig.cap = 'Confianza en vecinos, según zona geográfica y ola del estudios, porcentaje que responde "Bastante o mucho"'}
+```{r vecinos-zona, fig.cap = 'Confianza en vecinos, según zona geográfica y ola del estudios'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(4,5) & !t01 %in% c(-888, -999)) %>% 
@@ -489,11 +643,12 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) + 
   labs(x = NULL, y = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "Bastante o mucho"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r vecinos-estrato, fig.cap = 'Confianza en vecinos según tipo de ciudad y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+```{r vecinos-estrato, fig.cap = 'Confianza en vecinos según tipo de ciudad y ola del estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(4,5) & !t01 %in% c(-888, -999)) %>% 
@@ -516,11 +671,12 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) +
   labs(x = NULL, y = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "Bastante o mucho"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r vecinos-quintil, fig.cap = 'Confianza en vecinos, según quintil de ingresos y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+```{r vecinos-quintil, fig.cap = 'Confianza en vecinos, según quintil de ingresos y ola del estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & !is_nsnr(t01),
@@ -556,13 +712,59 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "Bastante o mucho"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+```
+
+```{r vecinos-ola-quintil-zona, fig.cap = 'Confianza en vecinos según ola, quintil y zona'}
+
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(t01),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}')),
+         zona1 = factor(car::recode(region_cod, 
+                                    "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = 1:4,
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  ungroup() %>% 
+  prop(t01 %in% 4:5, by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  as_label(ola) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "Bastante o mucho"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
 ```
 
 
 ## 2.3. Lazos fuertes
 
-```{r lazos-olas, fig.cap = 'Grado permanencia de lazos fuertes en el barrio según ola'}
+```{r lazos-ola, fig.cap = 'Grado permanencia de lazos fuertes en el barrio según ola'}
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:4, !is_nsnr(t04_05)) %>% 
   mutate(t04_05 = factor(car::recode(t04_05, "4:5 = 1; 3 = 2; 1:2 = 3"),
@@ -574,6 +776,7 @@ elsoc_long_2016_2021 %>%
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
   theme_bw() + 
   geom_col(position = 'Stack') +
+  scale_y_continuous(labels = scales::percent) +
   scale_fill_viridis_d(end = .85) +
   geom_text(position = position_stack(vjust = .5),
             size = 3, color = rep(c('white', 'white', 'black'), 4)) + 
@@ -585,7 +788,7 @@ labs(x  = NULL, y = NULL, title = NULL,
 ```
 
 
-```{r lazos-ola-zona, fig.cap = 'Grado permanencia de lazos fuertes  según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r lazos-ola-zona, fig.cap = 'Grado permanencia de lazos fuertes  según ola y zona'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:4, !is_nsnr(t04_05)) %>% 
   mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
@@ -607,11 +810,11 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) +
   labs(x = NULL, y = NULL, title = NULL,
-       subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
        caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
 ```
 
-```{r lazos-ola-estrato, fig.cap = 'Grado permanencia de lazos fuertes  según ola y tipo de ciudad, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r lazos-ola-estrato, fig.cap = 'Grado permanencia de lazos fuertes  según ola y tipo de ciudad'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:4, !is_nsnr(t04_05)) %>% 
   mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
@@ -635,12 +838,12 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 2) +
   labs(x = NULL, y = NULL, title = NULL,
-       subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
        caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
 
 ```
 
-```{r lazos-quintil, fig.cap = 'Grado permanencia de lazos fuertes  según quintil de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+```{r lazos-ola-quintil, fig.cap = 'Grado permanencia de lazos fuertes  según quintil de ingresos y ola del estudio'}
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:4, !is_nsnr(t04_05),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
@@ -676,7 +879,50 @@ elsoc_long_2016_2021 %>%
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(y = NULL, x = NULL, title = NULL, 
-       subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+```
+
+```{r lazos-ola-quintil-zona, fig.cap = 'Grado permanencia de lazos fuertes  según quintil de ingresos y ola del estudio'}
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:4, !is_nsnr(t04_05),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(
+  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}')),
+         zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  ungroup() %>% 
+  as_label(ola) %>% 
+  prop(t04_05 %in% 1:2, by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL, 
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
 ```
 
@@ -739,7 +985,7 @@ elsoc_long_2016_2021 %>%
   mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
                           labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
                                      'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
-  sjlabelled::as_label(ola, c12_01) %>%
+  as_label(ola, c12_01) %>%
   prop(x = c12_01, by = c(ola, estrato), na.rm = TRUE) %>% 
   filter(c12_01 == "Miembro activo") %>% 
   ggplot(aes(y = prop, x = estrato, fill = ola, 
@@ -758,9 +1004,93 @@ labs(x = NULL, y = NULL, title = NULL,
 
 ```
 
+```{r membresia-ola-quintil, fig.cap = 'Miembros activos a junta de vecinos según quintil y ola del estudio'}
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1, !is_nsnr(c07_01),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
+  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
+  ungroup() %>% 
+  as_label(ola, c12_01) %>%
+  prop(x = c12_01, by = c(ola, quintil), na.rm = TRUE) %>% 
+  filter(c12_01 == "Miembro activo") %>% 
+  ggplot(aes(y = prop, x = quintil, fill = ola, 
+             label = scales::percent(prop, accuracy = .1))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .33, end = .66, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0), legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 3) +
+labs(x = NULL, y = NULL, title = NULL, 
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
+
+```
+
+```{r membresia-ola-quintil-zona, fig.cap = 'Miembros activos a junta de vecinos, según ola, quintil y zona'}
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1, !is_nsnr(c07_01),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(zona1 = factor(car::recode(region_cod, 
+                                    "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = 1:4,
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
+  ungroup() %>% 
+  as_label(ola, c12_01) %>%
+  prop(x = c12_01, by = c(ola, quintil, zona1), na.rm = TRUE) %>% 
+  filter(c12_01 == "Miembro activo") %>% 
+  ggplot(aes(y = prop, x = quintil, fill = ola, 
+             label = scales::percent(prop, accuracy = .1))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .33, end = .66, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0), legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  facet_wrap(.~ zona1) +
+labs(x = NULL, y = NULL, title = NULL, 
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
+
+```
+
 ## 3.2. Apoyo social
 
-```{r frecvisitavecinos-ola, fig.cap = 'Frecuencia de visita a vecinos según ola de estudio'}
+```{r frecvisita-ola, fig.cap = 'Frecuencia de visita a vecinos según ola de estudio'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & !c07_01 %in% c(-888, -999)) %>% 
@@ -785,7 +1115,7 @@ labs(caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNo
 
 ```
 
-```{r frecvisita-zona, fig.cap = 'Frecuencia de visita vecinos según zona geográfica, porcentaje que visitó una o más veces'}
+```{r frecvisita-zona, fig.cap = 'Frecuencia de visita a vecinos según zona geográfica'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(4,5) & !c07_01 %in% c(-888, -999)) %>% 
@@ -809,11 +1139,12 @@ elsoc_long_2016_2021 %>%
             position = position_dodge(width = .9),
             size = 3) + 
   labs(x = NULL, y = NULL, title = NULL, 
+       subtitle = 'Porcentaje que visitó una o más veces',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r frecvisita-estrato, fig.cap = 'Frecuencia de visita vecinos según estrato, porcentaje que visitó una o más veces'}
+```{r frecvisita-estrato, fig.cap = 'Frecuencia de visita a vecinos según estrato'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(4,5) & !c07_01 %in% c(-888, -999)) %>% 
@@ -834,12 +1165,13 @@ elsoc_long_2016_2021 %>%
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
             size = 3) +
-  labs(x = NULL, y = NULL, title = NULL, 
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que visitó una o más veces',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
 
 ```
 
-```{r frecvisita-quintil, fig.cap = 'Frecuencia de visita vecinos por quintil, porcentaje que visitó una o más veces'}
+```{r frecvisita-quintil, fig.cap = 'Frecuencia de visita a vecinos por ola y quintil'}
 
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & !is_nsnr(c07_01),
@@ -873,6 +1205,51 @@ elsoc_long_2016_2021 %>%
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) + 
-  labs(y = NULL, x = NULL, title = NULL, 
+  labs(y = NULL, x = NULL, title = NULL,
+       subtitle = 'Porcentaje que visitó una o más veces',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+```
+
+```{r frecvisita-ola-quintil-zona, fig.cap = 'Frecuencia de visita a vecinos por ola, quintil y zona'}
+
+elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c07_01),
+         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+  nhogar = case_when(ola == 1 ~ nhogar1,
+                     ola == 2 ~ m46_nhogar,
+                     TRUE ~ m54),
+  ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}')),
+         zona1 = factor(car::recode(region_cod, 
+                                    "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = 1:4,
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  ungroup() %>% 
+  as_label(ola) %>% 
+  prop(c07_01 %in% 2:3, by = c(quintil, ola, zona1), na.rm = TRUE) %>% 
+  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  facet_wrap(.~ zona1) +
+  labs(y = NULL, x = NULL, title = NULL,
+       subtitle = 'Porcentaje que visitó una o más veces',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
 ```

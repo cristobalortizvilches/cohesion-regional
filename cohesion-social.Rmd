@@ -90,6 +90,7 @@ labs(x  = NULL, y = NULL, title = NULL,
 
 
 ```{r identidad-ola-zona, fig.cap = 'Nivel identificación con el país  según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
   mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
@@ -102,16 +103,16 @@ elsoc_long_2016_2021 %>%
   theme_bw() + 
   geom_col(position = 'dodge2') +
   scale_y_continuous(labels = scales::percent,
-                     limits = c(0, 1)) +
+                     limits = c(0,1)) +
   scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) +
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
-            size = 3) +
+            size = 2.5) +
   labs(x = NULL, y = NULL, title = NULL,
-       subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
        caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
 ```
 
@@ -145,6 +146,14 @@ elsoc_long_2016_2021 %>%
 ```
 
 ```{r identidad-quintil, fig.cap = 'Nivel identificación con el país  según quintil de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+prom_nac <- elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
+  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+  as_label(ola) %>% 
+  prop(c32_02 %in% 4:5, by = c(ola), na.rm = TRUE)
+
 elsoc_long_2016_2021 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
