@@ -1,0 +1,308 @@
+---
+title: "Análisis de clases latentes"
+author: "Cristóbal Ortiz"
+date: '2022-11-16'
+output:
+  html_document:
+    keep_md: yes
+    toc: yes
+    theme: paper
+    highlight: pygments
+    toc_float:
+      collapsed: yes
+  word_document:
+    toc: yes
+  pdf_document:
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	fig.align = "left",
+	fig.topcaption = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE
+)
+Sys.setlocale("LC_ALL","ES_ES.UTF-8")
+```
+
+```{r packages, message=FALSE, warning=FALSE, include=FALSE}
+library(poLCA)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(tidyverse)
+library(sjmisc)
+library(sjlabelled)
+library(ggrepel)
+library(ggalluvial)
+library(survey)
+library(spatstat)
+library(gtools)
+library(sf)
+library(elsoc)
+library(lubridate)
+library(viridis)
+library(treemapify)
+library(statar)
+library(panelr)
+```
+
+```{r datos-elsoc, message=FALSE, warning=FALSE, include=FALSE}
+
+load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
+#load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
+
+# Datos territoriales ELSOC
+#elsoc::load_elsoc('territorial-2017')
+#territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
+```
+
+```{r recode-vars}
+
+elsoc <- elsoc_long_2016_2021 %>% 
+  filter(tipo_atricion == 1, muestra == 1, !is_nsnr(t02_01, t02_02, t02_03, t02_04,
+                                                    t03_01, t03_02, t03_03, t03_04,
+                                                    t05, t01, c12_01, c07_01)) %>% 
+  mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
+         spbi = cut(spb, breaks = c(0,3,5), labels = c(1,2)),
+         soc = (t03_01 + t03_02 + t03_03 + t03_04)/4,
+         soci = cut(soc, breaks = c(0,3,5), labels = c(1,2)),
+         arra = car::recode(t05, "c(1,2,4)=1; c(3)=2"),
+         conf = car::recode(t01, "c(1,2,3)=1; c(4,5)=2"),
+         part = car::recode(c12_01, "c(1)=1; c(2,3)=2"),
+         apoy = car::recode(c07_01, "c(1)=1; c(2,3)=2")) %>%
+  set_labels(spbi, labels = c("No perteneciente", "Perteneciente")) %>% 
+  set_labels(soci, labels = c("No sociabilidad", "Sociabilidad")) %>% 
+  set_labels(arra, labels = c("Desarraigo","Arraigo")) %>% 
+  set_labels(conf, labels = c("No confía","Confía")) %>% 
+  set_labels(part, labels = c("No participa","Participa")) %>% 
+  set_labels(apoy, labels = c("No apoya","Apoya")) %>% 
+  as_numeric(spbi, soci, arra, conf, part, apoy) 
+
+elsoc_wide <- reshape(elsoc, idvar = "idencuesta", timevar = "ola", direction = "wide", sep = "_w0")
+
+elsoc_cl <- elsoc_wide %>% 
+  select(idencuesta, estrato_disenno_w05, segmento_disenno_w05, ponderador02_w05,
+         spbi_w04, arra_w04, soci_w04, conf_w04,part_w03, apoy_w04) %>% 
+  drop_na()
+```
+
+```{r modelo-lca}
+
+set.seed(1)
+
+var <- cbind(spbi_w04, arra_w04, soci_w04, conf_w04, part_w03, apoy_w04) ~ 1
+
+# tres clases
+tipos_3 <- poLCA(var, elsoc_cl, nclass = 3, na.rm = TRUE, 
+                 maxiter = 5000, nrep = 10)
+
+elsoc_cl$clase_3 <- as.factor(tipos_3$predclass)
+#Observamos las frecuencias de las clases.
+tabla_3 <- table(elsoc_cl$clase_3)
+tabla_3
+prop.table(tabla_3)
+
+# cuatro clases
+
+tipos_4 <- poLCA(var, elsoc_cl, nclass = 4, na.rm = TRUE, 
+                 maxiter = 5000, nrep = 10)
+
+elsoc_cl$clase_4 <- as.factor(tipos_4$predclass)
+#Observamos las frecuencias de las clases.
+tabla_4 <- table(elsoc_cl$clase_4)
+tabla_4
+prop.table(tabla_4)
+
+# cinco clases
+
+tipos_5 <- poLCA(var, elsoc_cl, nclass = 5, na.rm = TRUE, 
+                 maxiter = 5000, nrep = 10)
+
+elsoc_cl$clase_5 <- as.factor(tipos_5$predclass)
+#Observamos las frecuencias de las clases.
+tabla_5 <- table(elsoc_cl$clase_5)
+tabla_5
+prop.table(tabla_5)
+
+```
+
+```{r tres-clases}
+
+tab1_3 <- elsoc_cl %>% group_by(clase_3, spbi_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 1) %>% rename(Clase=clase_3, Tipos=spbi_w04)
+
+tab2_3 <- elsoc_cl %>% group_by(clase_3, arra_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 2) %>% rename(Clase=clase_3, Tipos=arra_w04)
+
+tab3_3 <- elsoc_cl %>% group_by(clase_3, soci_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 3) %>% rename(Clase=clase_3, Tipos=soci_w04)
+
+tab4_3 <- elsoc_cl %>% group_by(clase_3, conf_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 4) %>% rename(Clase=clase_3, Tipos=conf_w04)
+
+tab5_3 <- elsoc_cl %>% group_by(clase_3, part_w03) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 5) %>% rename(Clase=clase_3, Tipos=part_w03)
+
+tab6_3 <- elsoc_cl %>% group_by(clase_3, apoy_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 6) %>% rename(Clase=clase_3, Tipos=apoy_w04)
+
+tab_3 <- rbind(tab1_3, tab2_3, tab3_3, tab4_3, tab5_3, tab6_3)
+rm(tab1_3, tab2_3, tab3_3, tab4_3, tab5_3, tab6_3)
+
+tab_3 <- tab_3 %>% 
+  mutate(Clase = factor(Clase, levels = c(1,2,3), labels = c("Cohesionados\ndesconfiados (42.84%)", 
+                                                             "Cohesionados\ncomprometidos (40.93%)", 
+                                                             "Poco cohesionados\ncomprometidos (16.21%)")),
+         Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
+         var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
+                                                                "Arraigo",
+                                                                "Sociabilidad",
+                                                                "Confianza",
+                                                                "Participación",
+                                                                "Apoyo")))
+
+
+tab_3 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  labs(y = NULL, x = NULL,
+       title = "Perfiles de cohesión barrial: 3 clases", fill = "") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5), labels = scales::percent, limits=c(0, 1)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, option = 'viridis') +
+  theme(axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_grid(~ Clase) 
+
+#ggsave(filename = "3_clases.jpg", width = 35, height = 15, units = "cm")
+```
+
+```{r cuatro-clases}
+
+tab1_4 <- elsoc_cl %>% group_by(clase_4, spbi_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 1) %>% rename(Clase=clase_4, Tipos=spbi_w04)
+
+tab2_4 <- elsoc_cl %>% group_by(clase_4, arra_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 2) %>% rename(Clase=clase_4, Tipos=arra_w04)
+
+tab3_4 <- elsoc_cl %>% group_by(clase_4, soci_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 3) %>% rename(Clase=clase_4, Tipos=soci_w04)
+
+tab4_4 <- elsoc_cl %>% group_by(clase_4, conf_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 4) %>% rename(Clase=clase_4, Tipos=conf_w04)
+
+tab5_4 <- elsoc_cl %>% group_by(clase_4, part_w03) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 5) %>% rename(Clase=clase_4, Tipos=part_w03)
+
+tab6_4 <- elsoc_cl %>% group_by(clase_4, apoy_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 6) %>% rename(Clase=clase_4, Tipos=apoy_w04)
+
+tab_4 <- rbind(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
+rm(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
+
+tab_4 <- tab_4 %>% 
+  mutate(Clase = factor(Clase, levels = c(1,2,3,4), labels = c("Altamente\ncohesionados\n(47.02%)", 
+                                                             "Desapegados\ncomprometidos\n(06.52%)", 
+                                                             "Apegados\ndesconfiados\n(35.36%)",
+                                                             "Poco\ncohesionados\n(11.07%)")),
+         Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
+         var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
+                                                                "Arraigo",
+                                                                "Sociabilidad",
+                                                                "Confianza",
+                                                                "Participación",
+                                                                "Apoyo")))
+
+
+tab_4 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  labs(y = NULL, x = NULL,
+       title = "Perfiles de cohesión barrial: 4 clases", fill = "") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5), labels = scales::percent, limits=c(0, 1)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, option = 'viridis') +
+  theme(axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_grid(~ Clase) 
+
+#ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
+
+```
+
+
+```{r cinco-clases}
+
+tab1_5 <- elsoc_cl %>% group_by(clase_5, spbi_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 1) %>% rename(Clase=clase_5, Tipos=spbi_w04)
+
+tab2_5 <- elsoc_cl %>% group_by(clase_5, arra_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 2) %>% rename(Clase=clase_5, Tipos=arra_w04)
+
+tab3_5 <- elsoc_cl %>% group_by(clase_5, soci_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 3) %>% rename(Clase=clase_5, Tipos=soci_w04)
+
+tab4_5 <- elsoc_cl %>% group_by(clase_5, conf_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 4) %>% rename(Clase=clase_5, Tipos=conf_w04)
+
+tab5_5 <- elsoc_cl %>% group_by(clase_5, part_w03) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 5) %>% rename(Clase=clase_5, Tipos=part_w03)
+
+tab6_5 <- elsoc_cl %>% group_by(clase_5, apoy_w04) %>%
+  summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
+  mutate(var = 6) %>% rename(Clase=clase_5, Tipos=apoy_w04)
+
+tab_5 <- rbind(tab1_5, tab2_5, tab3_5, tab4_5, tab5_5, tab6_5)
+rm(tab1_5, tab2_5, tab3_5, tab4_5, tab5_5, tab6_5)
+
+tab_5 <- tab_5 %>% 
+  mutate(Clase = factor(Clase, levels = c(1,2,3,4,5), labels = c("Comprometidos\nnoparticipantes\n(15.92%)", 
+                                                                 "Poco\ncohesionados\n(10.05%)",
+                                                                 "Arraigados\ndesconfiados\n(08.21%)",
+                                                                 "Pertenecientes\nno comprometidos\n(30.00%)",
+                                                                 "Altamente\ncohesionado\n(35.80%)")),
+         Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
+         var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
+                                                                "Arraigo",
+                                                                "Sociabilidad",
+                                                                "Confianza",
+                                                                "Participación",
+                                                                "Apoyo")))
+
+
+tab_5 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  labs(y = NULL, x = NULL,
+       title = "Perfiles de cohesión barrial: 5 clases", fill = "") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 3), labels = scales::percent, limits=c(0, 1)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, option = 'viridis') +
+  theme(axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_grid(~ Clase) 
+
+#ggsave(filename = "5_clases.jpg", width = 35, height = 15, units = "cm")
+```
+
