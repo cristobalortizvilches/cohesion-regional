@@ -55,9 +55,6 @@ library(panelr)
 load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
 #load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
 
-# Datos territoriales ELSOC
-#elsoc::load_elsoc('territorial-2017')
-#territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
 ```
 
 ```{r recode-vars}
@@ -81,6 +78,10 @@ elsoc <- elsoc_long_2016_2021 %>%
   set_labels(part, labels = c("No participa","Participa")) %>% 
   set_labels(apoy, labels = c("No apoya","Apoya")) %>% 
   as_numeric(spbi, soci, arra, conf, part, apoy) 
+
+#prueba <- elsoc %>% 
+  #select(spb, spbi, soc, soci, t05, arra, t01, conf, c12_01, part, c07_01, apoy) %>% 
+  #as_label(spbi, soci, arra, conf, part, apoy)
 
 elsoc_wide <- reshape(elsoc, idvar = "idencuesta", timevar = "ola", direction = "wide", sep = "_w0")
 
@@ -130,7 +131,7 @@ prop.table(tabla_5)
 
 ```
 
-```{r tres-clases}
+```{r tres-clases-PDTE}
 
 tab1_3 <- elsoc_cl %>% group_by(clase_3, spbi_w04) %>%
   summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
@@ -217,10 +218,10 @@ tab_4 <- rbind(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
 rm(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
 
 tab_4 <- tab_4 %>% 
-  mutate(Clase = factor(Clase, levels = c(1,2,3,4), labels = c("Altamente\ncohesionados\n(47.02%)", 
-                                                             "Desapegados\ncomprometidos\n(06.52%)", 
-                                                             "Apegados\ndesconfiados\n(35.36%)",
-                                                             "Poco\ncohesionados\n(11.07%)")),
+  mutate(Clase = factor(Clase, levels = c(1,2,3,4), labels = c("Desapegados\nrelacionales\n(06.52%)", 
+                                                               "Poco\ncohesionados\n(11.07%)", 
+                                                               "Apegados\ndesconfiados\n(35.36%)",
+                                                               "Altamente\ncohesionados\n(47.02%)")),
          Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
          var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
                                                                 "Arraigo",
@@ -242,12 +243,12 @@ tab_4 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) +
         legend.title = element_blank()) +
   facet_grid(~ Clase) 
 
-#ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
+ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
 
 ```
 
 
-```{r cinco-clases}
+```{r cinco-clases-PDTE}
 
 tab1_5 <- elsoc_cl %>% group_by(clase_5, spbi_w04) %>%
   summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
@@ -304,5 +305,25 @@ tab_5 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) +
   facet_grid(~ Clase) 
 
 #ggsave(filename = "5_clases.jpg", width = 35, height = 15, units = "cm")
+```
+```{r save-dataset}
+elsoc_cl <- elsoc_cl %>% 
+  mutate(class_3 = factor(clase_3, levels = c(1,2,3), labels = c("Cohesionados\ndesconfiados (42.84%)", 
+                                                             "Cohesionados\ncomprometidos (40.93%)", 
+                                                             "Poco cohesionados\ncomprometidos (16.21%)")),
+         class_4 = factor(clase_4, levels = c(1,2,3,4), labels = c("Desapegados\nrelacionales\n(06.52%)", 
+                                                               "Poco\ncohesionados\n(11.07%)", 
+                                                               "Apegados\ndesconfiados\n(35.36%)",
+                                                               "Altamente\ncohesionados\n(47.02%)")),
+         class_5 = factor(clase_5, levels = c(1,2,3,4,5), labels = c("Comprometidos\nnoparticipantes\n(15.92%)", 
+                                                                 "Poco\ncohesionados\n(10.05%)",
+                                                                 "Arraigados\ndesconfiados\n(08.21%)",
+                                                                 "Pertenecientes\nno comprometidos\n(30.00%)",
+                                                                 "Altamente\ncohesionado\n(35.80%)")))
+
+save(tab_3, file = "datos/tab_3.RData")
+save(tab_4, file = "datos/tab_4.RData")
+save(tab_5, file = "datos/tab_5.RData")
+save(elsoc_cl, file = "datos/elsoc_cl.RData")
 ```
 

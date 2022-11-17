@@ -1,0 +1,193 @@
+---
+title: "Clases latentes por regiones"
+author: "Cristóbal Ortiz"
+date: '2022-11-16'
+output:
+  pdf_document:
+    toc: yes
+  html_document:
+    keep_md: yes
+    toc: yes
+    theme: paper
+    highlight: pygments
+    toc_float:
+      collapsed: yes
+    code_folding: show
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "left",
+	fig.topcaption = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE
+)
+Sys.setlocale("LC_ALL","ES_ES.UTF-8")
+```
+
+```{r packages, message=FALSE, warning=FALSE, include=FALSE}
+library(poLCA)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(tidyverse)
+library(sjmisc)
+library(sjlabelled)
+library(ggrepel)
+library(ggalluvial)
+library(survey)
+library(spatstat)
+library(gtools)
+library(sf)
+library(elsoc)
+library(lubridate)
+library(viridis)
+library(treemapify)
+library(statar)
+```
+
+```{r datos-elsoc, message=FALSE, warning=FALSE, include=FALSE}
+getwd()
+load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
+load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
+
+load("datos/tab_3.RData")
+load("datos/tab_4.RData")
+load("datos/tab_5.RData")
+load("datos/elsoc_cl.RData")
+
+# Datos territoriales ELSOC
+#elsoc::load_elsoc('territorial-2017')
+#territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
+```
+
+```{r tipos-zona}
+
+elsoc_cl %>% 
+  left_join(elsoc_wide_2016_2021, by = 'idencuesta') %>% 
+  filter(tipo_atricion == 1) %>%
+  mutate(zona1 = factor(car::recode(region_cod_w04, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>%
+  filter(!is.na(zona1), !is.na(class_4)) %>% 
+  rename("ponderador02" = "ponderador02_w05.x") %>% 
+  prop(class_4, by = zona1, na.rm = TRUE) %>% 
+  ggplot(aes(x = prop, y = fct_rev(zona1), fill = fct_rev(class_4), 
+             label = scales::percent(ifelse(prop < .01, NA, prop), .1))) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  scale_x_continuous(labels = scales::percent) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  geom_text(position = position_stack(vjust = .5), 
+            size = 3, na.rm = TRUE,
+            color = rep(c('white', 'white', 'black', 'black'), 4)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  labs(y = NULL, x = NULL, fill = NULL,
+       title = 'Perfiles de cohesión barrial según zona geográfica',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2019-2021.\nNota: Se consideran observaciones sólo de los años 2019 y 2021 (N= 1365)')
+```
+
+```{r tipos-estrato}
+
+elsoc_cl %>% 
+  left_join(elsoc_wide_2016_2021, by = 'idencuesta') %>% 
+  filter(tipo_atricion == 1) %>%
+  mutate(estrato = factor(estrato_w05, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
+  filter(!is.na(estrato), !is.na(class_4)) %>% 
+  rename("ponderador02" = "ponderador02_w05.x") %>% 
+  prop(class_4, by = estrato, na.rm = TRUE) %>% 
+  ggplot(aes(x = prop, y = fct_rev(estrato), fill = fct_rev(class_4), 
+             label = scales::percent(ifelse(prop < .01, NA, prop), .1))) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  scale_x_continuous(labels = scales::percent) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  geom_text(position = position_stack(vjust = .5), 
+            size = 3, na.rm = TRUE,
+            color = rep(c('white', 'white', 'black', 'black'), 6)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  labs(y = NULL, x = NULL, fill = NULL,
+       title = 'Perfiles de cohesión barrial según tipo de ciudad',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2019-2021.\nNota: Se consideran observaciones sólo de los años 2019 y 2021 (N= 1365)')
+```
+
+```{r tipos-quintil}
+
+elsoc_cl %>% 
+  left_join(elsoc_wide_2016_2021, by = 'idencuesta') %>% 
+  filter(tipo_atricion == 1) %>%
+  mutate(
+  m30 = as.numeric(car::recode(m30_w04, "1 = 110000; 2 = 251000; 
+  3 = 305000; 4 = 355000; 5 = 400000; 
+  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
+  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
+  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+  m30b = as.numeric(car::recode(m30b_w05, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+  m29_imp = ifelse(!is_nsnr(m29_w05), m29_w05, ifelse(m30b, m30)), 
+  ypc = m29_imp / m46_nhogar_w02) %>% 
+  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02_w05.x),
+         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
+  filter(!is.na(quintil), !is.na(class_4)) %>% 
+  rename("ponderador02" = "ponderador02_w05.x") %>% 
+  prop(class_4, by = quintil, na.rm = TRUE) %>% 
+  ggplot(aes(x = prop, y = fct_rev(quintil), fill = fct_rev(class_4), 
+             label = scales::percent(ifelse(prop < .01, NA, prop), .1))) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  scale_x_continuous(labels = scales::percent) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  geom_text(position = position_stack(vjust = .5), 
+            size = 3, na.rm = TRUE,
+            color = rep(c('white', 'white', 'black', 'black'), 5)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  labs(y = NULL, x = NULL, fill = NULL,
+       title = 'Perfiles de cohesión barrial según quintil de ingreso per capita', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2019-2021.\nNota: Se consideran observaciones sólo de los años 2019 y 2021 (N= 1365)')
+```
+
+```{r tipos-educ}
+
+elsoc_cl %>% 
+  left_join(elsoc_wide_2016_2021, by = 'idencuesta') %>% 
+  filter(tipo_atricion == 1) %>%
+  mutate(educ = factor(car::recode(m01_w05, recodes = "1:3 = 1; 4:5 = 2; 6:7 = 3; 8:10 = 4"),
+                       levels = 1:4,
+                       labels = c("Basica", "Media", "Tecnica", "Universitaria"))) %>%
+  filter(!is.na(educ), !is.na(class_4)) %>% 
+  rename("ponderador02" = "ponderador02_w05.x") %>% 
+  prop(class_4, by = educ, na.rm = TRUE) %>% 
+  ggplot(aes(x = prop, y = fct_rev(educ), fill = fct_rev(class_4), 
+             label = scales::percent(ifelse(prop < .01, NA, prop), .1))) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  scale_x_continuous(labels = scales::percent) +
+  guides(fill = guide_legend(reverse = TRUE)) +
+  geom_text(position = position_stack(vjust = .5), 
+            size = 3, na.rm = TRUE,
+            color = rep(c('white', 'white', 'black', 'black'), 4)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  labs(y = NULL, x = NULL, fill = NULL,
+       title = 'Perfiles de cohesión barrial según nivel educacional',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2019-2021.\nNota: Se consideran observaciones sólo de los años 2019 y 2021 (N= 1365)')
+```
+
+
