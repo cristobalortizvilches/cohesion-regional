@@ -79,10 +79,6 @@ elsoc <- elsoc_long_2016_2021 %>%
   set_labels(apoy, labels = c("No apoya","Apoya")) %>% 
   as_numeric(spbi, soci, arra, conf, part, apoy) 
 
-#prueba <- elsoc %>% 
-  #select(spb, spbi, soc, soci, t05, arra, t01, conf, c12_01, part, c07_01, apoy) %>% 
-  #as_label(spbi, soci, arra, conf, part, apoy)
-
 elsoc_wide <- reshape(elsoc, idvar = "idencuesta", timevar = "ola", direction = "wide", sep = "_w0")
 
 elsoc_cl <- elsoc_wide %>% 
@@ -131,7 +127,7 @@ prop.table(tabla_5)
 
 ```
 
-```{r tres-clases-PDTE}
+```{r tres-clases}
 
 tab1_3 <- elsoc_cl %>% group_by(clase_3, spbi_w04) %>%
   summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
@@ -161,9 +157,9 @@ tab_3 <- rbind(tab1_3, tab2_3, tab3_3, tab4_3, tab5_3, tab6_3)
 rm(tab1_3, tab2_3, tab3_3, tab4_3, tab5_3, tab6_3)
 
 tab_3 <- tab_3 %>% 
-  mutate(Clase = factor(Clase, levels = c(1,2,3), labels = c("Cohesionados\ndesconfiados (42.84%)", 
-                                                             "Cohesionados\ncomprometidos (40.93%)", 
-                                                             "Poco cohesionados\ncomprometidos (16.21%)")),
+  mutate(Clase = factor(Clase, levels = c(1,2,3), labels = c("Apegados\ndesconfiados (42.84%)", 
+                                                             "Altamente\ncohesionados (40.93%)", 
+                                                             "Poco\ncohesionados (16.21%)")),
          Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
          var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
                                                                 "Arraigo",
@@ -173,7 +169,8 @@ tab_3 <- tab_3 %>%
                                                                 "Apoyo")))
 
 
-tab_3 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+tab_3 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participación", "Confianza","Sociabilidad", "Arraigo", "Pertenencia")), 
+                     fill = Tipos)) +
   geom_bar(stat = 'identity', position = 'stack') +
   labs(y = NULL, x = NULL,
        title = "Perfiles de cohesión barrial: 3 clases", fill = "") +
@@ -183,7 +180,8 @@ tab_3 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) +
   theme(axis.text.x = element_text(size = rel(.9)),
         legend.position = 'top',
         legend.title = element_blank()) +
-  facet_grid(~ Clase) 
+  facet_grid(~ Clase) +
+  guides(fill = guide_legend(reverse = TRUE))
 
 #ggsave(filename = "3_clases.jpg", width = 35, height = 15, units = "cm")
 ```
@@ -231,7 +229,7 @@ tab_4 <- tab_4 %>%
                                                                 "Apoyo")))
 
 
-tab_4 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+tab_4 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participación", "Confianza","Sociabilidad", "Arraigo", "Pertenencia")),  fill = Tipos)) + 
   geom_bar(stat = 'identity', position = 'stack') +
   labs(y = NULL, x = NULL,
        title = "Perfiles de cohesión barrial: 4 clases", fill = "") +
@@ -241,9 +239,10 @@ tab_4 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) +
   theme(axis.text.x = element_text(size = rel(.9)),
         legend.position = 'top',
         legend.title = element_blank()) +
-  facet_grid(~ Clase) 
+  facet_grid(~ Clase) +
+  guides(fill = guide_legend(reverse = TRUE))
 
-ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
+#ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
 
 ```
 
@@ -278,11 +277,11 @@ tab_5 <- rbind(tab1_5, tab2_5, tab3_5, tab4_5, tab5_5, tab6_5)
 rm(tab1_5, tab2_5, tab3_5, tab4_5, tab5_5, tab6_5)
 
 tab_5 <- tab_5 %>% 
-  mutate(Clase = factor(Clase, levels = c(1,2,3,4,5), labels = c("Comprometidos\nnoparticipantes\n(15.92%)", 
+  mutate(Clase = factor(Clase, levels = c(1,2,3,4,5), labels = c("Altamente\ncohesionados\n(35.80%)",
+                                                                 "Cohesionados\ndesarraigados\n(15.92%)", 
+                                                                 "Apegados\nno comprometidos\n(30.00%)",
                                                                  "Poco\ncohesionados\n(10.05%)",
-                                                                 "Arraigados\ndesconfiados\n(08.21%)",
-                                                                 "Pertenecientes\nno comprometidos\n(30.00%)",
-                                                                 "Altamente\ncohesionado\n(35.80%)")),
+                                                                 "Apegados\ndesconfiados\n(08.21%)")),
          Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
          var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
                                                                 "Arraigo",
@@ -292,7 +291,7 @@ tab_5 <- tab_5 %>%
                                                                 "Apoyo")))
 
 
-tab_5 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) + 
+tab_5 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participación", "Confianza","Sociabilidad", "Arraigo", "Pertenencia")), fill = Tipos)) + 
   geom_bar(stat = 'identity', position = 'stack') +
   labs(y = NULL, x = NULL,
        title = "Perfiles de cohesión barrial: 5 clases", fill = "") +
@@ -302,24 +301,26 @@ tab_5 %>% ggplot(aes(x = freq, y = var, fill = Tipos)) +
   theme(axis.text.x = element_text(size = rel(.9)),
         legend.position = 'top',
         legend.title = element_blank()) +
-  facet_grid(~ Clase) 
+  facet_grid(~ Clase) +
+  guides(fill = guide_legend(reverse = TRUE))
 
 #ggsave(filename = "5_clases.jpg", width = 35, height = 15, units = "cm")
 ```
+
 ```{r save-dataset}
 elsoc_cl <- elsoc_cl %>% 
-  mutate(class_3 = factor(clase_3, levels = c(1,2,3), labels = c("Cohesionados\ndesconfiados (42.84%)", 
-                                                             "Cohesionados\ncomprometidos (40.93%)", 
-                                                             "Poco cohesionados\ncomprometidos (16.21%)")),
+  mutate(class_3 = factor(clase_3, levels = c(1,2,3), labels = c("Apegados\ndesconfiados (42.84%)", 
+                                                             "Altamente\ncohesionados (40.93%)", 
+                                                             "Poco\ncohesionados (16.21%)")),
          class_4 = factor(clase_4, levels = c(1,2,3,4), labels = c("Desapegados\nrelacionales\n(06.52%)", 
                                                                "Poco\ncohesionados\n(11.07%)", 
                                                                "Apegados\ndesconfiados\n(35.36%)",
                                                                "Altamente\ncohesionados\n(47.02%)")),
-         class_5 = factor(clase_5, levels = c(1,2,3,4,5), labels = c("Comprometidos\nnoparticipantes\n(15.92%)", 
+         class_5 = factor(clase_5, levels = c(1,2,3,4,5), labels = c("Altamente\ncohesionados\n(35.80%)",
+                                                                 "Cohesionados\ndesarraigados\n(15.92%)", 
+                                                                 "Apegados\nno comprometidos\n(30.00%)",
                                                                  "Poco\ncohesionados\n(10.05%)",
-                                                                 "Arraigados\ndesconfiados\n(08.21%)",
-                                                                 "Pertenecientes\nno comprometidos\n(30.00%)",
-                                                                 "Altamente\ncohesionado\n(35.80%)")))
+                                                                 "Apegados\ndesconfiados\n(08.21%)")))
 
 save(tab_3, file = "datos/tab_3.RData")
 save(tab_4, file = "datos/tab_4.RData")
