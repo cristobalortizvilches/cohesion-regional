@@ -1,0 +1,214 @@
+---
+title: "La Cohesión Barrial en Perspectiva Territorial"
+author: "Cristóbal Ortiz - Asistente L4 COES"
+date: '2022-11-16'
+output:
+  html_document:
+    keep_md: yes
+    toc: yes
+    theme: paper
+    highlight: pygments
+    toc_float:
+      collapsed: yes
+  pdf_document:
+    toc: yes
+  word_document:
+    toc: yes
+header-includes:
+   - \usepackage{floatrow}
+   - \floatsetup[figure]{capposition=top}
+editor_options: 
+  chunk_output_type: inline
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = FALSE,
+	fig.align = "left",
+	fig.topcaption = TRUE,
+	message = FALSE,
+	warning = FALSE,
+	cache = FALSE
+)
+Sys.setlocale("LC_ALL","ES_ES.UTF-8")
+```
+
+```{r packages, message=FALSE, warning=FALSE, include=FALSE}
+
+library(poLCA)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(tidyverse)
+library(sjmisc)
+library(sjlabelled)
+library(ggrepel)
+library(ggalluvial)
+library(survey)
+library(spatstat)
+library(gtools)
+library(sf)
+library(elsoc)
+library(lubridate)
+library(viridis)
+library(treemapify)
+library(statar)
+```
+
+```{r datos-elsoc, message=FALSE, warning=FALSE, include=FALSE}
+
+load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
+load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
+getwd()
+load("../ELSOC_Long.RData")
+
+# Datos territoriales ELSOC
+elsoc::load_elsoc('territorial-2017')
+territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
+```
+
+# 1. Apego al barrio
+
+## 1.1. Sentido de pertenencia al barrio
+
+```{r spb-ola-estrato}
+
+plot_1 <- elsoc_long_2016_2022 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(t02_01, t02_02, t02_03, t02_04)) %>% 
+  mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
+         spb_rec = factor(cut(spb, breaks = c(0,2.75,3.75,5)),
+                                  labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo")),
+         estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran Santiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
+  prop(x = spb_rec, by = c(ola, estrato), na.rm = TRUE) %>% 
+  as_label(ola) %>% 
+  filter(spb_rec == 'De acuerdo o\ntotalmente de acuerdo',
+         estrato == 'Gran Santiago') %>% 
+  ggplot(aes(y = prop, x = estrato, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, 
+       title = 'Nivel de pertenencia al barrio según año',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: La pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "Este es el barrio ideal para mi", "Me siento integrado/a en este barrio",\n"Me identifico con la gente de este barrio", "Este barrio es parte de mi".')
+
+plot_1
+```
+
+## 1.2. Arraigo al barrio
+
+```{r arraigo-ola-estrato}
+
+plot_2 <- elsoc_long_2016_2022 %>% 
+  filter(tipo_atricion == 1 & muestra == 1 & ola %in% 1:6 & !t05 %in% c(-888, -999)) %>% 
+  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran Santiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
+  as_label(ola) %>%
+  prop(t05 == 3, by = c(ola, estrato), na.rm = TRUE) %>% 
+  filter(estrato == 'Gran Santiago',
+         !ola == '2021') %>% 
+  ggplot(aes(y = prop, x = estrato, fill = ola, 
+             label = scales::percent(prop, accuracy = .1))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .33, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),           legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 3) +
+labs(x = NULL, y = NULL, 
+     title = 'Intención de movilidad residencial según año', 
+     subtitle = 'Porcentaje que responde "No, porque estoy bien donde estoy"',
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
+
+plot_2
+```
+
+# 2. Relaciones vecinales
+
+## 2.1. Sociabilidad barrial
+
+```{r soci-ola-estrato}
+plot_3 <- elsoc_long_2016_2022 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(t03_01, t03_02, t03_03, t03_04)) %>% 
+  mutate(soci = (t03_01 + t03_02 + t03_03 + t03_04)/4,
+         soci_rec = factor(cut(soci, breaks = c(0,2.75,3.75,5)),
+                                  labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo")),
+         estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran Santiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
+  prop(x = soci_rec, by = c(ola, estrato), na.rm = TRUE) %>% 
+  as_label(ola) %>% 
+  filter(soci_rec == 'De acuerdo o\ntotalmente de acuerdo',
+         estrato == 'Gran Santiago') %>% 
+  ggplot(aes(y = prop, x = estrato, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, 
+       title = 'Nivel de sociabilidad barrial según año',
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: La sociabilidad barrial corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "En este barrio es facil hacer amigos", "La gente en este barrio es sociable",\n"La gente en este barrio es cordial", "La gente en este barrio es colaboradora".')
+
+plot_3
+```
+
+
+## 2.2. Confianza en vecinos
+
+```{r vecinos-estrato}
+
+plot_4 <- elsoc_long_2016_2022 %>% 
+  filter(tipo_atricion == 1 & muestra == 1 & ola %in% 1:6 & !t01 %in% c(-888, -999)) %>% 
+  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran Santiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
+  sjlabelled::as_label(ola) %>%
+  prop(x = t01 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>%
+  filter(estrato == 'Gran Santiago',
+         !ola == '2021') %>% 
+  ggplot(aes(y = prop, x = estrato, fill = ola, 
+             label = scales::percent(prop, accuracy = .1))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 1)) +
+  scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),           legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 3) +
+  labs(x = NULL, y = NULL, 
+       title = 'Confianza en vecinos según año', 
+       subtitle = 'Porcentaje que responde "Bastante o mucho"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
+
+plot_4
+```
+
+
+
