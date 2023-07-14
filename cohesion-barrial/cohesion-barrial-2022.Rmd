@@ -133,7 +133,7 @@ elsoc_long_2016_2022 %>%
                                   labels = c("Totalmente en desacuerdo o\nen desacuerdo",
                                              "Ni de acuerdo\nni en desacuerdo",
                                              "De acuerdo o\ntotalmente de acuerdo")),
-  regiones = recode(region, 
+         regiones = recode(region, 
                     "Aysen del general carlos ibanhez del campo" = "Aysen", 
                     "Aysén del general carlos ibáñez del campo" = "Aysen",
                     "Bio bio" = "Biobío", "Biobio" = "Biobío", 
