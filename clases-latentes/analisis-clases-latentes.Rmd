@@ -64,9 +64,9 @@ elsoc <- elsoc_long_2016_2021 %>%
                                                     t03_01, t03_02, t03_03, t03_04,
                                                     t05, t01, c12_01, c07_01)) %>% 
   mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
-         spbi = cut(spb, breaks = c(0,3,5), labels = c(1,2)),
+         spbi = cut(spb, breaks = c(0,3.5,5), labels = c(1,2)),
          soc = (t03_01 + t03_02 + t03_03 + t03_04)/4,
-         soci = cut(soc, breaks = c(0,3,5), labels = c(1,2)),
+         soci = cut(soc, breaks = c(0,3.5,5), labels = c(1,2)),
          arra = car::recode(t05, "c(1,2,4)=1; c(3)=2"),
          conf = car::recode(t01, "c(1,2,3)=1; c(4,5)=2"),
          part = car::recode(c12_01, "c(1)=1; c(2,3)=2"),
@@ -90,18 +90,17 @@ elsoc_cl <- elsoc_wide %>%
 ```{r modelo-lca}
 
 set.seed(1)
-
 var <- cbind(spbi_w04, arra_w04, soci_w04, conf_w04, part_w03, apoy_w04) ~ 1
 
 # tres clases
-tipos_3 <- poLCA(var, elsoc_cl, nclass = 3, na.rm = TRUE, 
-                 maxiter = 5000, nrep = 10)
+#tipos_3 <- poLCA(var, elsoc_cl, nclass = 3, na.rm = TRUE, 
+                #maxiter = 5000, nrep = 10)
 
-elsoc_cl$clase_3 <- as.factor(tipos_3$predclass)
+#elsoc_cl$clase_3 <- as.factor(tipos_3$predclass)
 #Observamos las frecuencias de las clases.
-tabla_3 <- table(elsoc_cl$clase_3)
-tabla_3
-prop.table(tabla_3)
+#tabla_3 <- table(elsoc_cl$clase_3)
+#tabla_3
+#prop.table(tabla_3)
 
 # cuatro clases
 
@@ -116,14 +115,14 @@ prop.table(tabla_4)
 
 # cinco clases
 
-tipos_5 <- poLCA(var, elsoc_cl, nclass = 5, na.rm = TRUE, 
-                 maxiter = 5000, nrep = 10)
+#tipos_5 <- poLCA(var, elsoc_cl, nclass = 5, na.rm = TRUE, 
+                 #maxiter = 5000, nrep = 10)
 
-elsoc_cl$clase_5 <- as.factor(tipos_5$predclass)
+#elsoc_cl$clase_5 <- as.factor(tipos_5$predclass)
 #Observamos las frecuencias de las clases.
-tabla_5 <- table(elsoc_cl$clase_5)
-tabla_5
-prop.table(tabla_5)
+#tabla_5 <- table(elsoc_cl$clase_5)
+#tabla_5
+#prop.table(tabla_5)
 
 ```
 
@@ -187,7 +186,7 @@ tab_3 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participació
 ```
 
 ```{r cuatro-clases}
-
+#remove(tab_4)
 tab1_4 <- elsoc_cl %>% group_by(clase_4, spbi_w04) %>%
   summarise (n = n()) %>% mutate(freq = n / sum(n)) %>% 
   mutate(var = 1) %>% rename(Clase=clase_4, Tipos=spbi_w04)
@@ -216,10 +215,10 @@ tab_4 <- rbind(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
 rm(tab1_4, tab2_4, tab3_4, tab4_4, tab5_4, tab6_4)
 
 tab_4 <- tab_4 %>% 
-  mutate(Clase = factor(Clase, levels = c(1,2,3,4), labels = c("Desapegados\nrelacionales\n(06.52%)", 
-                                                               "Poco\ncohesionados\n(11.07%)", 
-                                                               "Apegados\ndesconfiados\n(35.36%)",
-                                                               "Altamente\ncohesionados\n(47.02%)")),
+  mutate(Clase = factor(Clase, levels = c(2,1,4,3), labels = c("Altamente\ncohesionados\n(34.18%)",
+                                                               "Apegados\ndesconfiados\n(36.55%)", 
+                                                               "Desapegados\nrelacionales\n(10.41%)",
+                                                               "Poco\ncohesionados\n(18.85%)")),
          Tipos  = factor(Tipos, levels = c(1,2), labels = c("No presenta", "Presenta")),
          var  = factor(var, levels = c(1,2,3,4,5,6), labels = c("Pertenencia",
                                                                 "Arraigo",
@@ -242,7 +241,7 @@ tab_4 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participació
   facet_grid(~ Clase) +
   guides(fill = guide_legend(reverse = TRUE))
 
-#ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
+ggsave(filename = "4_clases.jpg", width = 35, height = 15, units = "cm")
 
 ```
 
@@ -309,22 +308,14 @@ tab_5 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participació
 
 ```{r save-dataset}
 elsoc_cl <- elsoc_cl %>% 
-  mutate(class_3 = factor(clase_3, levels = c(1,2,3), labels = c("Apegados\ndesconfiados (42.84%)", 
-                                                             "Altamente\ncohesionados (40.93%)", 
-                                                             "Poco\ncohesionados (16.21%)")),
-         class_4 = factor(clase_4, levels = c(1,2,3,4), labels = c("Desapegados\nrelacionales\n(06.52%)", 
-                                                               "Poco\ncohesionados\n(11.07%)", 
-                                                               "Apegados\ndesconfiados\n(35.36%)",
-                                                               "Altamente\ncohesionados\n(47.02%)")),
-         class_5 = factor(clase_5, levels = c(1,2,3,4,5), labels = c("Altamente\ncohesionados\n(35.80%)",
-                                                                 "Cohesionados\ndesarraigados\n(15.92%)", 
-                                                                 "Apegados\nno comprometidos\n(30.00%)",
-                                                                 "Poco\ncohesionados\n(10.05%)",
-                                                                 "Apegados\ndesconfiados\n(08.21%)")))
+  mutate(class_4 = factor(clase_4,levels = c(2,1,4,3), labels = c("Altamente\ncohesionados\n(34.18%)",
+                                                               "Apegados\ndesconfiados\n(36.55%)", 
+                                                               "Desapegados\nrelacionales\n(10.41%)",
+                                                               "Poco\ncohesionados\n(18.85%)")))
 
-save(tab_3, file = "datos/tab_3.RData")
+#save(tab_3, file = "datos/tab_3.RData")
 save(tab_4, file = "datos/tab_4.RData")
-save(tab_5, file = "datos/tab_5.RData")
+#save(tab_5, file = "datos/tab_5.RData")
 save(elsoc_cl, file = "datos/elsoc_cl.RData")
 ```
 
