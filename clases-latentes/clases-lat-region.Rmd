@@ -62,6 +62,22 @@ load("datos/elsoc_cl.RData")
 #territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
 ```
 
+```{r tipos-cb}
+tab_4 %>% ggplot(aes(x = freq, y = factor(var, levels = c("Apoyo","Participación", "Confianza","Sociabilidad", "Arraigo", "Pertenencia")),  fill = Tipos)) + 
+  geom_bar(stat = 'identity', position = 'stack') +
+  labs(y = NULL, x = NULL,
+       title = "Perfiles de cohesión barrial: 4 clases", fill = "") +
+  scale_x_continuous(breaks = scales::pretty_breaks(n = 5), labels = scales::percent, limits=c(0, 1)) +
+  theme_bw() + 
+  scale_fill_viridis_d(end = .85, option = 'viridis') +
+  theme(axis.text.x = element_text(size = rel(.9)),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  facet_grid(~ Clase) +
+  guides(fill = guide_legend(reverse = TRUE))
+
+```
+
 ```{r tipos-zona}
 
 elsoc_cl %>% 

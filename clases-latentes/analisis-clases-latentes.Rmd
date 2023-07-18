@@ -51,7 +51,7 @@ library(panelr)
 ```
 
 ```{r datos-elsoc, message=FALSE, warning=FALSE, include=FALSE}
-
+remove(list = ls())
 load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
 #load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
 

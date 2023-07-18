@@ -20,6 +20,8 @@ output:
 
 
 
+<img src="clases-lat-region_files/figure-html/tipos-cb-1.png" style="display: block; margin: auto auto auto 0;" />
+
 <img src="clases-lat-region_files/figure-html/tipos-zona-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="clases-lat-region_files/figure-html/tipos-estrato-1.png" style="display: block; margin: auto auto auto 0;" />
