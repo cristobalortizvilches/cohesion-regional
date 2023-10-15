@@ -193,9 +193,9 @@ elsoc_long_2016_2022 %>%
             position = position_dodge(width = .9),
             size = 2.5) +
   labs(x = NULL, y = NULL, 
-       title = 'Nivel de pertenencia al barrio según ola y tipo de ciudad',
+       title = 'Nivel de apego al barrio según ola y tipo de ciudad',
        subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: La pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "Este es el barrio ideal para mi", "Me siento integrado/a en este barrio",\n"Me identifico con la gente de este barrio", "Este barrio es parte de mi".')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos).\nNota 2: El apego al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "Este es el barrio ideal para mi", "Me siento integrado/a en este barrio",\n"Me identifico con la gente de este barrio", "Este barrio es parte de mi".')
 
 ```
 
@@ -247,7 +247,6 @@ elsoc_long_2016_2022 %>%
 
 
 ```{r spb-ola-quintil-zona}
-
 elsoc_long_2016_2022 %>% 
   filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(t02_01, t02_02, t02_03, t02_04),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
@@ -295,6 +294,43 @@ elsoc_long_2016_2022 %>%
        subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: La La pertenencia al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "Este es el barrio ideal para mi", "Me siento integrado/a en este barrio",\n"Me identifico con la gente de este barrio", "Este barrio es parte de mi".')
 ```
+
+```{r spb-educ-ams}
+elsoc_long_2016_2022 %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(t02_01, t02_02, t02_03, t02_04,m01)) %>% 
+  mutate(spb = (t02_01 + t02_02 + t02_03 + t02_04)/4,
+         spb_rec = factor(cut(spb, breaks = c(0,2.75,3.75,5)),
+                                  labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo")),
+         estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran Santiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas')),
+         educ = factor(car::recode(m01,"1:3=1; 4:5=2; 6:7=3; 8:10=4"),
+                       labels = c("Básica", "Media", "Técnica", "Universitaria"))) %>% 
+  group_by(ola) %>% 
+  filter(estrato == "Gran Santiago") %>% 
+  prop(spb_rec, by = c(educ, ola), na.rm = TRUE) %>% 
+  filter(spb_rec == "De acuerdo o\ntotalmente de acuerdo") %>% 
+  as_label(ola) %>% 
+  #filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = educ, group = educ,
+             label = scales::percent(prop, .1))) +
+  geom_point(size = 1.75) + 
+  geom_line() +
+  theme_bw() +   
+  scale_color_viridis_d(begin = .11, end = .99, direction = -1) +
+  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
+  geom_text_repel(size = 3, nudge_y = .01)+
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) + 
+  labs(y = NULL, x = NULL, 
+       title = 'Nivel de apego al barrio según nivel educacional y ola del estudio', 
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos).\nNota 2: el apego al barrio corresponde a un índice compuesto de cuatro ítems donde se consulta el grado\nde acuerdo con las afirmaciones "Este es el barrio ideal para mi", "Me siento integrado/a en este barrio",\n"Me identifico con la gente de este barrio", "Este barrio es parte de mi".')
+
+```
+
 
 ## 1.2. Arraigo al barrio
 

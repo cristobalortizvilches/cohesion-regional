@@ -35,12 +35,17 @@ editor_options:
 
 <img src="cohesion-barrial-2022_files/figure-html/spb-ola-zona-1.png" style="display: block; margin: auto auto auto 0;" />
 
+<img src="cohesion-barrial-2022_files/figure-html/spb-ola-region-1.png" style="display: block; margin: auto auto auto 0;" />
+
 <img src="cohesion-barrial-2022_files/figure-html/spb-ola-estrato-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/spb-ola-quintil-1.png" style="display: block; margin: auto auto auto 0;" />
 
 
 <img src="cohesion-barrial-2022_files/figure-html/spb-ola-quintil-zona-1.png" style="display: block; margin: auto auto auto 0;" />
+
+<img src="cohesion-barrial-2022_files/figure-html/spb-educ-ams-1.png" style="display: block; margin: auto auto auto 0;" />
+
 
 ## 1.2. Arraigo al barrio
 
@@ -61,6 +66,7 @@ editor_options:
 <img src="cohesion-barrial-2022_files/figure-html/soci-ola-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/soci-ola-zona-1.png" style="display: block; margin: auto auto auto 0;" />
+<img src="cohesion-barrial-2022_files/figure-html/soci-ola-region-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/soci-ola-estrato-1.png" style="display: block; margin: auto auto auto 0;" />
 
@@ -73,6 +79,7 @@ editor_options:
 <img src="cohesion-barrial-2022_files/figure-html/vecinos-ola-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/vecinos-zona-1.png" style="display: block; margin: auto auto auto 0;" />
+<img src="cohesion-barrial-2022_files/figure-html/vecinos-ola-region-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/vecinos-estrato-1.png" style="display: block; margin: auto auto auto 0;" />
 
@@ -102,6 +109,8 @@ editor_options:
 <img src="cohesion-barrial-2022_files/figure-html/membresia-ola-1.png" style="display: block; margin: auto auto auto 0;" />
 
 <img src="cohesion-barrial-2022_files/figure-html/membresia-zona-1.png" style="display: block; margin: auto auto auto 0;" />
+<img src="cohesion-barrial-2022_files/figure-html/membresia-region-1.png" style="display: block; margin: auto auto auto 0;" />
+
 
 <img src="cohesion-barrial-2022_files/figure-html/membresia-estrato-1.png" style="display: block; margin: auto auto auto 0;" />
 

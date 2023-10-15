@@ -1,18 +1,18 @@
 ---
-title: "Cohesión social en perspectiva territorial"
+title: "Cohesión social y conflicto social en Chile"
 author: "Cristóbal Ortiz"
 date: '2022-11-09'
 output:
-  word_document:
-    toc: yes
-  pdf_document:
-    toc: yes
   html_document:
     toc: yes
     theme: paper
     highlight: pygments
     toc_float:
       collapsed: yes
+  pdf_document:
+    toc: yes
+  word_document:
+    toc: yes
 header-includes:
    - \usepackage{floatrow}
    - \floatsetup[figure]{capposition=top}
@@ -53,26 +53,54 @@ library(statar)
 ```
 
 ```{r datos-elsoc, message=FALSE, warning=FALSE, include=FALSE}
-
-load(url("https://dataverse.harvard.edu/api/access/datafile/6160173"))
-load(url("https://dataverse.harvard.edu/api/access/datafile/6160174"))
-
-# Datos territoriales ELSOC
-elsoc::load_elsoc('territorial-2017')
-territorial <- merge(elsoc_wide_2016_2021, elsoc_terr_2017, by="idencuesta")
+remove(list = ls())
+load(url("https://dataverse.harvard.edu/api/access/datafile/7245118"))
+elsoc_long <- elsoc_long.2
 ```
 
+```{r recode}
+elsoc_long <-  elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(m0_sexo, m0_edad, m01, d01_01, region_cod, estrato, m30, m29, nhogar1, m46_nhogar, m54)) %>% 
+  mutate(sexo = factor(m0_sexo, labels = c('Hombre', 'Mujer')),
+         edad = factor(car::recode(m0_edad, "18:29=1; 30:49=2; 50:64=3; 65:150=4"),
+                       labels = c('18-29', '30-49', '50-64', '65 o más')),
+         educ = factor(car::recode(m01,"1:3=1; 4:5=2; 6:7=3; 8:10=4"),
+                       labels = c("Básica", "Media", "Técnica", "Universitaria")),
+         essu = factor(car::recode(d01_01, "c(6,7,8,9,10)=1; c(4,5)=2; c(0,1,2,3)=3")),
+         zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
+                        levels = c(1,2,3,4), 
+                        labels = c("Norte","Centro","Sur","Metropolitana")),
+         estrato = factor(estrato, levels = c(1,2,3,4,5,6),
+                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
+                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas')),
+         m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 3 = 305000; 4 = 355000; 5 = 400000; 
+         6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 11 = 700000; 12 = 765000; 13 = 845000; 
+         14 = 935000; 15 = 1040000; 16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
+         m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
+         m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
+         nhogar = case_when(ola == 1 ~ nhogar1,
+                            ola == 2 ~ m46_nhogar,
+                            TRUE ~ m54),
+         ypc = m29_imp / nhogar) %>% 
+  group_by(ola) %>% 
+  mutate(educ = xtile(ypc, n = 5, wt = ponderador02),
+         educ = factor(educ, levels = 1:5, labels = glue::glue('educ {1:5}'))) %>%
+  ungroup()
+```
 
-# 1. Sentido de pertenencia social
+# I. Cohesión y conflicto en Chile
 
-## 1.1. Identificación con el país
+## 1. Sentido de pertenencia social
+
+### 1.1. Identificación con el país
 
 ```{r identidad-olas, fig.cap = 'Grado de identificación con el país según ola'}
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c32_02)) %>% 
   mutate(c32_02 = factor(car::recode(c32_02, "1:2 = 1; 3 = 2; 4:5 = 3"),
                          levels = 1:3,
                          labels = c("Totalmente en desacuerdo o\nen desacuerdo","Ni de acuerdo\nni en desacuerdo","De acuerdo o\ntotalmente de acuerdo"))) %>%
+  as_label(ola) %>% 
   prop(x = c32_02, by = ola, na.rm = TRUE) %>% 
   ggplot(aes(y = prop, x = ola, fill = c32_02, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
@@ -80,31 +108,26 @@ elsoc_long_2016_2021 %>%
   geom_col(position = 'Stack') +
   scale_fill_viridis_d(end = .85) +
   geom_text(position = position_stack(vjust = .5),
-            size = 3, color = rep(c('white', 'white', 'black'), 5)) + 
+            size = 3, color = rep(c('white', 'white', 'black'), 6)) + 
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) +
-labs(x  = NULL, y = NULL, title = NULL,
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+labs(x  = NULL, y = NULL, title = 'Grado de identificación con el país según ola',
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-
-```{r identidad-ola-zona, fig.cap = 'Nivel identificación con el país  según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+```{r identidad-genero}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c32_02)) %>% 
   as_label(ola) %>% 
-  prop(c32_02 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
-  ggplot(aes(y = prop, x = zona1, fill = ola, 
+  prop(c32_02 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = sexo, fill = ola, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
   theme_bw() + 
   geom_col(position = 'dodge2') +
   scale_y_continuous(labels = scales::percent,
                      limits = c(0,1)) +
-  scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) +
@@ -113,71 +136,62 @@ elsoc_long_2016_2021 %>%
             size = 2.5) +
   labs(x = NULL, y = NULL, title = NULL,
        subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
 ```
 
-```{r identidad-ola-estrato, fig.cap = 'Nivel identificación con el país  según ola y tipo de ciudad, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
+```{r identidad-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c32_02)) %>% 
   as_label(ola) %>% 
-  prop(c32_02 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>%
-  ggplot(aes(y = prop, x = estrato, fill = ola, 
+  prop(c32_02 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = edad, fill = ola, 
              label = as.character(scales::percent(prop, accuracy = .1)))) + 
   theme_bw() + 
   geom_col(position = 'dodge2') +
-  ylab(label = NULL) +
-  xlab(label = NULL) +
   scale_y_continuous(labels = scales::percent,
-                     limits = c(0, 1)) +
-  scale_fill_viridis_d(begin = .22, end = .88, direction = -1) +
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) +
   geom_text(vjust = -0.8,
             position = position_dodge(width = .9),
-            size = 2) +
+            size = 2.5) +
   labs(x = NULL, y = NULL, title = NULL,
-       subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo',
-       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
-
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
 ```
 
-```{r identidad-quintil, fig.cap = 'Nivel identificación con el país  según quintil de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
-prom_nac <- elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02)) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
-  as_label(ola) %>% 
-  prop(c32_02 %in% 4:5, by = c(ola), na.rm = TRUE)
+```{r identidad-zona, fig.cap = 'Nivel identificación con el país  según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola %in% 1:5, !is_nsnr(c32_02),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
-  mutate(
-  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
-         ) %>%
-  ungroup() %>% 
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c32_02)) %>% 
   as_label(ola) %>% 
-  prop(c32_02 %in% 4:5, by = c(quintil, ola), na.rm = TRUE) %>% 
-  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
-  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
+  prop(c32_02 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = zona1, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde "De acuerdo o totalmente de acuerdo"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+```
+
+```{r identidad-educ, fig.cap = 'Nivel identificación con el país  según educ de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c32_02)) %>% 
+  as_label(ola) %>% 
+  prop(c32_02 %in% 4:5, by = c(educ, ola), na.rm = TRUE) %>%  
+  ggplot(aes(y = prop, x = ola, color = educ, group = educ,
              label = scales::percent(prop, .1))) +
   geom_point(size = 1.75) + 
   geom_line() +
@@ -193,19 +207,48 @@ elsoc_long_2016_2021 %>%
        caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
 ```
 
-## 1.2. Percepción de justicia
-
+### 1.2. Percepción de justicia
 
 ```{r justicia-olas, fig.cap = 'Percepción de importancia y recompensas del mérito según ola'}
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10)) %>% 
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10, c18_13)) %>% 
   as_label(ola) %>% 
-  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, by = ola, na.rm = TRUE) %>% 
+  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, c18_13 %in%  4:5, by = ola, na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5'),
-                       labels = c('En Chile, las personas son\nrecompensadas por su esfuerzo',
-                                  'En Chile, las personas son\nrecompensadas por su inteligencia'))) %>% 
+                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5', 'c18_13 %in% 4:5'),
+                       labels = c('Las personas son\nrecompensadas por su esfuerzo',
+                                  'Las personas son\nrecompensadas por su inteligencia',
+                                  'Las personas tienen\nigualdad de oportunidades'))) %>% 
+  filter(!prop_se == 0) %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r justicia-sexo}
+
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10, c18_13)) %>% 
+  as_label(ola) %>% 
+  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, c18_13 %in%  4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5', 'c18_13 %in% 4:5'),
+                       labels = c('Las personas son\nrecompensadas por su esfuerzo',
+                                  'Las personas son\nrecompensadas por su inteligencia',
+                                  'Las personas tienen\nigualdad de oportunidades'))) %>% 
+  filter(!prop_se == 0) %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
@@ -213,138 +256,119 @@ elsoc_long_2016_2021 %>%
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.5)) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-```{r justicia-olas-zona, fig.cap = 'Percepción de importancia y recompensas del mérito según ola y zona geográfica'}
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10)) %>% 
+```{r justicia-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10, c18_13)) %>% 
   as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
-  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5'),
-                       labels = c('En Chile, las personas son\nrecompensadas por su esfuerzo',
-                                  'En Chile, las personas son\nrecompensadas por su inteligencia'))) %>% 
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-               label = scales::percent(prop, accuracy = .1))) +
-    theme_bw() +  
-    geom_line() +
-    geom_point(size = 1.75) +
-    scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.6)) +
-  facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
-    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
-    theme(plot.caption = element_text(hjust = 0),
-          legend.position = 'top',
-          legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
-```
-
-```{r justicia-olas-estrato, fig.cap = 'Percepción de importancia y recompensas del mérito según ola y tipo de ciudad'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10)) %>% 
-  as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
-  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5'),
-                       labels = c('En Chile, las personas son\nrecompensadas por su esfuerzo',
-                                  'En Chile, las personas son\nrecompensadas por su inteligencia'))) %>% 
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-               label = scales::percent(prop, accuracy = .1))) +
-    theme_bw() +  
-    geom_line() +
-    geom_point(size = 1.75) +
-    scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.5)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
-    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
-    theme(plot.caption = element_text(hjust = 0),
-          legend.position = 'top',
-          legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
-```
-
-```{r justicia-quintil, fig.cap = 'Percepción de importancia y recompensas del mérito según ola y quintil de ingreso (año 2021)'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == 5, !is_nsnr(c18_09, c18_10),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
-  as_label(ola) %>% 
-  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
-         ) %>%
-  ungroup() %>%
-  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, by = c(ola, quintil), na.rm = TRUE) %>% 
+  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, c18_13 %in%  4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name,
+                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5', 'c18_13 %in% 4:5'),
+                       labels = c('Las personas son\nrecompensadas por su esfuerzo',
+                                  'Las personas son\nrecompensadas por su inteligencia',
+                                  'Las personas tienen\nigualdad de oportunidades'))) %>% 
+  filter(!prop_se == 0) %>% 
   drop_na() %>% 
-  mutate(name = factor(name, 
-                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5'),
-                       labels = c('En Chile, las personas son\nrecompensadas por su esfuerzo',
-                                  'En Chile, las personas son\nrecompensadas por su inteligencia'))) %>% 
-  ggplot(aes(y = prop, fill = quintil, x = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_col(position = 'dodge2') + 
-  geom_text(position = position_dodge(.9),
-            vjust = -.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,.5)) +
-  ylab(label = NULL) +
-  xlab(label = NULL) +
-  scale_fill_viridis_d(end = .85, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) + 
-  ggtitle(NULL,
-          subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo') +
-  labs(caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=1.507 (1.507 individuos)')
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.7)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
 
+
+```{r justicia-zona, fig.cap = 'Percepción de importancia y recompensas del mérito según ola y zona geográfica'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10, c18_13)) %>% 
+  as_label(ola) %>% 
+  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, c18_13 %in%  4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
+  mutate(name = factor(name,
+                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5', 'c18_13 %in% 4:5'),
+                       labels = c('Las personas son\nrecompensadas por su esfuerzo',
+                                  'Las personas son\nrecompensadas por su inteligencia',
+                                  'Las personas tienen\nigualdad de oportunidades'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.7)) +
+  facet_wrap(.~ zona1) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-## 1.3. Confianza institucional
+```{r justicia-educ, fig.cap = 'Percepción de importancia y recompensas del mérito según ola y educ de ingreso (año 2022)'}
+elsoc_long %>% 
+filter(tipo_atricion == 1 & !is_nsnr(c18_09, c18_10, c18_13)) %>% 
+  as_label(ola) %>% 
+  prop_list(c18_09 %in% 4:5, c18_10 %in% 4:5, c18_13 %in%  4:5, by = c(educ, ola), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c18_09 %in% 4:5', 'c18_10 %in% 4:5', 'c18_13 %in% 4:5'),
+                       labels = c('Las personas son\nrecompensadas por su esfuerzo',
+                                  'Las personas son\nrecompensadas por su inteligencia',
+                                  'Las personas tienen\nigualdad de oportunidades'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.7)) +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
+```
+
+### 1.3. Confianza institucional
 
 ```{r confinsti-ola, fig.cap = 'Grado de confianza en instituciones según ola'}
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & !is_nsnr(c05_01, c05_02, c05_07, c05_08)) %>% 
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c05_02, c05_07, c05_08)) %>% 
   as_label(ola) %>% 
-  prop_list(c05_01 %in% 4:5, c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = ola, na.rm = TRUE) %>% 
+  prop_list(c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = ola, na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c05_01 %in% 4:5', 'c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
-                       labels = c('Gobierno de Chile', 'Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica'))) %>% 
+                       levels = c('c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
+                       labels = c('Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica'))) %>% 
+  drop_na() %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
@@ -352,24 +376,70 @@ elsoc_long_2016_2021 %>%
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.5)) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-```{r confinsti-olas-zona, fig.cap = 'Grado de confianza en instituciones según ola y zona geográfica'}
-
-elsoc_long_2016_2021 %>% 
+```{r confinsti-sexo}
+elsoc_long %>% 
   filter(tipo_atricion == 1 & !is_nsnr(c05_02, c05_07, c05_08)) %>% 
   as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+  prop_list(c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
+                       labels = c('Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica')))%>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.5)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r confinsti-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c05_02, c05_07, c05_08)) %>% 
+  as_label(ola) %>% 
+  prop_list(c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
+                       labels = c('Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica')))%>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.5)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+```{r confinsti-zona, fig.cap = 'Grado de confianza en instituciones según ola y zona geográfica'}
+
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c05_02, c05_07, c05_08)) %>% 
+  as_label(ola) %>% 
   prop_list(c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
                        levels = c('c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
@@ -382,28 +452,25 @@ elsoc_long_2016_2021 %>%
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.5)) +
   facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-```{r confinsti-olas-estrato, fig.cap = 'Grado de confianza en el Presidente de la República según ola y tipo de ciudad'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & !is_nsnr(c05_08)) %>% 
+```{r confinsti-educ, fig.cap = 'Grado de confianza en instituciones según ola y educ de ingreso'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == 1:6, !is_nsnr(c05_02, c05_07, c05_08)) %>% 
   as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
-  prop_list(c05_08 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>% 
+  prop_list(c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = c(ola, educ), na.rm = TRUE) %>% 
+  drop_na() %>% 
   mutate(name = factor(name, 
                        levels = c('c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
-                       labels = c('Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica')))%>% 
+                       labels = c('Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica'))) %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
@@ -411,68 +478,23 @@ elsoc_long_2016_2021 %>%
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.5)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-```{r confinsti-quintil, fig.cap = 'Grado de confianza en instituciones según ola y quintil de ingreso (año 2021)'}
+## 2. Relaciones sociales de igualdad
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == 5, !is_nsnr(c05_01, c05_02, c05_07, c05_08),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
-  as_label(ola) %>% 
-  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
-         ) %>%
-  ungroup() %>%
-  prop_list(c05_01 %in% 4:5, c05_02 %in% 4:5, c05_07 %in% 4:5, c05_08 %in% 4:5, by = c(ola, quintil), na.rm = TRUE) %>% 
-  drop_na() %>% 
-  mutate(name = factor(name, 
-                       levels = c('c05_01 %in% 4:5', 'c05_02 %in% 4:5', 'c05_07 %in% 4:5', 'c05_08 %in% 4:5'),
-                       labels = c('Gobierno de Chile', 'Partidos políticos', 'Congreso Nacional', 'Presidente/a de la Republica'))) %>% 
-  ggplot(aes(y = prop, fill = quintil, x = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_col(position = 'dodge2') + 
-  geom_text(position = position_dodge(.9),
-            vjust = -.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,.5)) +
-  scale_fill_viridis_d(end = .85, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) +
-  labs(x = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=1.507 (1.507 individuos)')
-
-```
-
-# 2. Relaciones sociales de igualdad
-
-## 2.1. Confianza interpersonal
+### 2.1. Confianza interpersonal
 
 ```{r confinter-ola, fig.cap = 'Confianza interpersonal, según ola'}
 
-elsoc_long_2016_2021 %>%
+elsoc_long %>%
   filter(tipo_atricion == 1 & !is_nsnr(c02, c03, c04)) %>% 
   as_label(ola) %>% 
   prop_list(c02 == 1, c03 == 1, c04 == 2, by = ola, na.rm = TRUE) %>% 
@@ -488,25 +510,75 @@ elsoc_long_2016_2021 %>%
   geom_point(size = 1.75) + 
   geom_line() + 
   scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
-  scale_color_viridis_d(begin = .22, end = .88, option = 'viridis') +
+  scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
   theme(plot.caption = element_text(hjust = 0),
         legend.position = 'top',
         legend.title = element_blank()) + 
   labs(x = NULL, y = NULL, title = NULL, 
        subtitle = 'Porcentaje que responde que...', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin
        atrición entre olas. N=7.442 (1.513 individuos)')
 
 ```
-
-```{r confinter-olas-zona, fig.cap = 'Confianza interpersonal según ola y zona geográfica'}
-
-elsoc_long_2016_2021 %>%
+```{r confinter-sexo}
+elsoc_long %>% 
   filter(tipo_atricion == 1 & !is_nsnr(c02, c03, c04)) %>% 
   as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+  prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola,sexo), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c02 == 1', 'c03 == 1', 'c04 == 2'),
+                       labels = c('Casi siempre se puede\nconfiar en las personas',
+                                  'La mayoría de las personas\ntrata de ayudar a las demás',
+                                  'La mayoría de las personas\ntratan de ser justas'))) %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.5)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r confinter-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c02, c03, c04)) %>% 
+  as_label(ola) %>% 
+  prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c02 == 1', 'c03 == 1', 'c04 == 2'),
+                       labels = c('Casi siempre se puede\nconfiar en las personas',
+                                  'La mayoría de las personas\ntrata de ayudar a las demás',
+                                  'La mayoría de las personas\ntratan de ser justas'))) %>%  
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.5)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r confinter-zona, fig.cap = 'Confianza interpersonal según ola y zona geográfica'}
+
+elsoc_long %>%
+  filter(tipo_atricion == 1 & !is_nsnr(c02, c03, c04)) %>% 
+  as_label(ola) %>% 
   prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola, zona1), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
                        levels = c('c02 == 1', 'c03 == 1', 'c04 == 2'),
@@ -521,77 +593,29 @@ elsoc_long_2016_2021 %>%
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.5)) +
   facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde que...', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-```{r confinter-olas-estrato, fig.cap = 'Confianza interpersonal según ola y tipo de ciudad'}
+```{r confinter-educ, fig.cap = 'Confianza interpersonal según ola y educ (año 2022)'}
 
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c02, c03, c04)) %>% 
-  as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas')))  %>% 
-  prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola, estrato), na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c02 == 1', 'c03 == 1', 'c04 == 2'),
-                       labels = c('Casi siempre se puede\nconfiar en las personas',
-                                  'La mayoría de las personas\ntrata de ayudar a las demás',
-                                  'La mayoría de las personas\ntratan de ser justas'))) %>% 
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-               label = scales::percent(prop, accuracy = .1))) +
-    theme_bw() +  
-    geom_line() +
-    geom_point(size = 1.75) +
-    scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.5)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
-    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
-    theme(plot.caption = element_text(hjust = 0),
-          legend.position = 'top',
-          legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde que...', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
-```
-
-```{r confinter-quintil, fig.cap = 'Confianza interpersonal según ola y quintil (año 2021)'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola == 5, !is_nsnr(c02, c03, c04),
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola == 6, !is_nsnr(c02, c03, c04),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
   as_label(ola) %>% 
-  mutate(
-  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
-  ungroup() %>% 
-  prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola, quintil), na.rm = TRUE) %>% 
+  prop_list(c02 == 1, c03 == 1, c04 == 2, by = c(ola, educ), na.rm = TRUE) %>% 
   drop_na() %>% 
   mutate(name = factor(name, 
                        levels = c('c02 == 1', 'c03 == 1', 'c04 == 2'),
                        labels = c('Casi siempre se puede\nconfiar en las personas',
                                   'La mayoría de las personas\ntrata de ayudar a las demás',
                                   'La mayoría de las personas\ntratan de ser justas'))) %>% 
-  ggplot(aes(y = prop, fill = quintil, x = name,
+  ggplot(aes(y = prop, fill = educ, x = name,
              label = scales::percent(prop, accuracy = .1))) +
   theme_bw() + 
   geom_col(position = 'dodge2') + 
@@ -609,12 +633,12 @@ elsoc_long_2016_2021 %>%
 
 ```
 
-## 2.2. Reconocimiento y respeto de la diversidad
+### 2.2. Reconocimiento y respeto de la diversidad
 
 ```{r diversidad-ola, fig.cap = 'Grado de confianza en diversidades según ola de estudio.'}
 
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == c(1,3), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == c(1,3,6), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
   as_label(ola) %>% 
   prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = ola, na.rm = TRUE) %>% 
   mutate(name = factor(name, 
@@ -627,25 +651,71 @@ elsoc_long_2016_2021 %>%
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,1)) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Confía Bastante o Mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-```{r diversidad-zona, fig.cap = 'Grado de confianza en diversidades según zona geográfica y ola del estudio, porcentaje que responde "Bastante o mucho"'}
-
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == c(1,3), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
+```{r diversidad-sexo, fig.cap = 'Grado de confianza en diversidades según zona geográfica y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == c(1,3,6), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
   as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
+  prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c06_04 %in% 4:5', 'c06_05 %in% 4:5', 'c06_06 %in% 4:5'),
+                       labels = c('Homosexuales (gays y lesbianas)', 'Mapuches', 'Inmigrantes')))%>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.6)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
+```
+
+```{r diversidad-edad, fig.cap = 'Grado de confianza en diversidades según zona geográfica y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == c(1,3,6), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
+  as_label(ola) %>% 
+  prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c06_04 %in% 4:5', 'c06_05 %in% 4:5', 'c06_06 %in% 4:5'),
+                       labels = c('Homosexuales (gays y lesbianas)', 'Mapuches', 'Inmigrantes')))%>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,.6)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r diversidad-zona, fig.cap = 'Grado de confianza en diversidades según zona geográfica y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == c(1,3,6), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
+  as_label(ola) %>% 
   prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
                        levels = c('c06_04 %in% 4:5', 'c06_05 %in% 4:5', 'c06_06 %in% 4:5'),
@@ -658,412 +728,154 @@ elsoc_long_2016_2021 %>%
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,.6)) +
   facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
   labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-```{r diversidad-estrato, fig.cap = 'Confianza en vecinos según tipo de ciudad y ola del estudio, porcentaje que responde "Bastante o mucho"'}
+```{r diversidad-educ, fig.cap = 'Grado de confianza en diversidades según educ de ingresos y ola del estudio, porcentaje que responde "Bastante o mucho"'}
 
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == c(1,3), !is_nsnr(c06_04, c06_05, c06_06)) %>% 
-  as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>% 
-  prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c06_04 %in% 4:5', 'c06_05 %in% 4:5', 'c06_06 %in% 4:5'),
-                       labels = c('Homosexuales (gays y lesbianas)', 'Mapuches', 'Inmigrantes')))%>% 
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-               label = scales::percent(prop, accuracy = .1))) +
-    theme_bw() +  
-    geom_line() +
-    geom_point(size = 1.75) +
-    scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.6)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
-    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
-    theme(plot.caption = element_text(hjust = 0),
-          legend.position = 'top',
-          legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
-```
-
-```{r diversidad-quintil, fig.cap = 'Grado de confianza en diversidades según quintil de ingresos y ola del estudio, porcentaje que responde "Bastante o mucho"'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == 3, !is_nsnr(c06_04, c06_05, c06_06),
+elsoc_long %>% 
+  filter(tipo_atricion == 1, ola == c(1,3,6), !is_nsnr(c06_04, c06_05, c06_06),
          !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
   as_label(ola) %>% 
-  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
-         ) %>%
-  ungroup() %>%
-  prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, quintil), na.rm = TRUE) %>% 
+  prop_list(c06_04 %in% 4:5, c06_05 %in% 4:5, c06_06 %in% 4:5, by = c(ola, educ), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
                        levels = c('c06_04 %in% 4:5', 'c06_05 %in% 4:5', 'c06_06 %in% 4:5'),
                        labels = c('Homosexuales (gays y lesbianas)', 'Mapuches', 'Inmigrantes'))) %>% 
   drop_na() %>% 
-  ggplot(aes(y = prop, fill = quintil, x = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_col(position = 'dodge2') + 
-  geom_text(position = position_dodge(.9),
-            vjust = -.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,.5)) +
-  scale_fill_viridis_d(end = .85, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) +
-  labs(x = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=1.507 (1.507 individuos)')
-```
-
-## 2.3. Lazos sociales 
-
-```{r lazos-ola, fig.cap = 'Cantidad de amigos según ola de estudio.'}
-
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & muestra == 1 & !is_nsnr(r15)) %>% 
-  mutate(c_amigos = factor(car::recode(r15, "1 = 1; 2:3 = 2; 4:5 = 3"),
-                               levels = 1:3,
-                               labels = c('No tiene amigos\nni amigas', 'De 1 a 5', 'Mas de 6'))) %>%
-  sjlabelled::as_label(ola) %>%
-
-  prop(x = c_amigos, by = ola, na.rm = TRUE) %>% 
-  ggplot(aes(y = prop, x = ola, fill = c_amigos, 
-             label = as.character(scales::percent(prop, accuracy = .1)))) + 
-  theme_bw() + 
-  geom_col(position = 'Stack') +
-  scale_fill_viridis_d(end = .85) +
-  geom_text(position = position_stack(vjust = .5),
-            size = 3, color = rep(c('white', 'white', 'black'), 2)) + 
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) +
-labs(x = NULL, y = NULL, caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos)')
-
-```
-
-```{r lazos-zona, fig.cap = 'Cantidad de amigos según zona geográfica y ola del estudios.'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(2,4) & !r15 %in% c(-888, -999)) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, 
-                                    "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = 1:4,
-                        labels = c("Norte","Centro","Sur","Metropolitana")))%>%
-  sjlabelled::as_label(ola) %>%
-
-  prop(x = r15 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
-  ggplot(aes(y = prop, x = zona1, fill = ola, 
-             label = scales::percent(prop, accuracy = .1))) + 
-  theme_bw() + 
-  geom_col(position = 'dodge2') +
-  scale_y_continuous(labels = scales::percent,
-                     limits = c(0, 1)) +
-  scale_fill_viridis_d(begin = .33, end = .66, direction = -1) +
-  theme(plot.caption = element_text(hjust = 0),           legend.position = 'top',
-        legend.title = element_blank()) +
-  geom_text(vjust = -0.8,
-            position = position_dodge(width = .9),
-            size = 3) + 
-  labs(x = NULL, y = NULL, title = NULL, 
-       subtitle = 'Porncentaje que responde "Mas de 6"',
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
-
-```
-
-```{r lazos-estrato, fig.cap = 'Confianza en vecinos según tipo de ciudad y ola del estudio'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & muestra == 1 & ola %in% c(2,4) & !r15 %in% c(-888, -999)) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas'))) %>%
-  sjlabelled::as_label(ola) %>%
-
-  prop(x = r15 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>% 
-  ggplot(aes(y = prop, x = estrato, fill = ola, 
-             label = scales::percent(prop, accuracy = .1))) + 
-  theme_bw() + 
-  geom_col(position = 'dodge2') +
-  scale_y_continuous(labels = scales::percent,
-                     limits = c(0, 1)) +
-  scale_fill_viridis_d(begin = .33, end = .66, direction = -1) +
-  theme(plot.caption = element_text(hjust = 0),           legend.position = 'top',
-        legend.title = element_blank()) +
-  geom_text(vjust = -0.8,
-            position = position_dodge(width = .9),
-            size = 3) +
-  labs(x = NULL, y = NULL, title = NULL, 
-       subtitle = 'Porncentaje que responde "Mas de 6"',
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=3.011 (1.513 individuos)')
-
-```
-
-```{r lazos-quintil, fig.cap = 'Cantidad de amigos según quintil de ingresos y ola del estudio'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1, ola == c(2,4), !is_nsnr(r15),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
-  mutate(m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))
-         ) %>%
-  ungroup() %>% 
-  prop(r15 %in% 4:5, by = c(quintil, ola), na.rm = TRUE) %>% 
-  as_label(ola) %>% 
-  filter(quintil %in% c('Quintil 1', 'Quintil 5')) %>% 
-  ggplot(aes(y = prop, x = ola, color = quintil, group = quintil,
-             label = scales::percent(prop, .1))) +
-  geom_point(size = 1.75) + 
-  geom_line() +
-  theme_bw() +   
-  scale_color_viridis_d(begin = 0, end = .66, direction = 1) +
-  scale_y_continuous(labels = scales::percent, limits = c(0, 1)) +
-  geom_text_repel(size = 3, nudge_y = .01)+
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) + 
-  labs(y = NULL, x = NULL, title = NULL, 
-       subtitle = 'Porncentaje que responde "Mas de 6"',
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.529 (1.513 individuos)')
-
-```
-# 3. Orientación al bien común
-
-## 3.1. Participación cívica
-
-```{r participacion-ola, fig.cap = 'Participación cívica según ola'}
-
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1, !is_nsnr(c08_01, c08_02, c08_03, c08_04)) %>% 
-  as_label(ola) %>% 
-  prop_list(c08_01 %in% 4:5, c08_02 %in% 4:5, c08_03 %in% 4:5, c08_04 %in% 4:5, by = ola, na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c08_01 %in% 4:5', 'c08_02 %in% 4:5', 'c08_03 %in% 4:5', 'c08_04 %in% 4:5'),
-                       labels = c('Firmado una carta o\npetición apoyando\nuna causa',
-                                  'Asistido a una marcha\no manifestación política',
-                                  'Participado en\nuna huelga',
-                                  'Usado las RR.SS para expresar\nsu opinión en temas públicos'))) %>% 
-  filter(!prop_se == 0) %>%
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_text_repel(nudge_y = .025, size = 3, color = 'black') +
-  geom_point(size = 1.75) + 
-  geom_line() + 
-  scale_y_continuous(labels = scales::percent, limits = c(0,.5)) +
-  scale_color_viridis_d(begin = .22, end = .88, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) + 
-  labs(x = NULL, y = NULL, title = NULL, 
-       subtitle = 'Porcentaje que responde que lo ha hecho "frecuente o muy frecuentemente"', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin
-       atrición entre olas. N=7.442 (1.513 individuos)')
-
-```
-
-```{r participacion-olas-zona, fig.cap = 'Participación cívica según ola y zona geográfica'}
-
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c08_01, c08_02, c08_03, c08_04)) %>% 
-  as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
-  prop_list(c08_01 %in% 4:5, c08_02 %in% 4:5, c08_03 %in% 4:5, c08_04 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>%
-  mutate(name = factor(name, 
-                       levels = c('c08_01 %in% 4:5', 'c08_02 %in% 4:5', 'c08_03 %in% 4:5', 'c08_04 %in% 4:5'),
-                       labels = c('Firmado una carta o\npetición apoyando\nuna causa',
-                                  'Asistido a una marcha\no manifestación política',
-                                  'Participado en\nuna huelga',
-                                  'Usado las RR.SS para expresar\nsu opinión en temas públicos'))) %>% 
-  filter(!prop_se == 0) %>%
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
+   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
     geom_line() +
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.5)) +
-  facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+                       limits = c(0,1)) +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde que lo ha hecho "frecuente o muy frecuentemente"', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que Porcentaje que confía bastante o mucho', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-```{r participacion-olas-estrato, fig.cap = 'Participación cívica según ola y tipo de ciudad'}
+## 3. Conflicto social en Chile
 
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c08_01, c08_02, c08_03, c08_04)) %>% 
+### 3.1. Conflicto general
+
+
+### 3.2. Conflicto vecinal
+
+# II. Exclusión social en Chile
+
+## 1. Tendencias conservadoras
+
+### 1.1. Formas de autoritarismo
+
+```{r auto-ola}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_04, c18_05, c18_06, c18_07, c18_08, c25)) %>% 
   as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas')))  %>% 
-  prop_list(c08_01 %in% 4:5, c08_02 %in% 4:5, c08_03 %in% 4:5, c08_04 %in% 4:5, by = c(ola, estrato), na.rm = TRUE) %>% 
+  prop_list(c18_04 %in% 4:5, c18_05 %in% 4:5, c18_06 %in% 4:5, c18_07 %in% 4:5, c18_08 %in% 4:5, by = ola, na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c08_01 %in% 4:5', 'c08_02 %in% 4:5', 'c08_03 %in% 4:5', 'c08_04 %in% 4:5'),
-                       labels = c('Firmado una carta o\npetición apoyando\nuna causa',
-                                  'Asistido a una marcha\no manifestación política',
-                                  'Participado en\nuna huelga',
-                                  'Usado las RR.SS para expresar\nsu opinión en temas públicos'))) %>% 
-  filter(!prop_se == 0) %>%
-  ggplot(aes(y = prop, x = ola, color = name, group = name,
-               label = scales::percent(prop, accuracy = .1))) +
-    theme_bw() +  
-    geom_line() +
-    geom_point(size = 1.75) +
-    scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.5)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
-    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
-    theme(plot.caption = element_text(hjust = 0),
-          legend.position = 'top',
-          legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde que lo ha hecho "frecuente o muy frecuentemente"', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
-
-```
-
-```{r participacion-quintil, fig.cap = 'Participación cívica según ola y quintil (año 2021)'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola == 5, !is_nsnr(c08_01, c08_02, c08_03, c08_04),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
-  as_label(ola) %>% 
-  mutate(
-  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
-  ungroup() %>% 
-  prop_list(c08_01 %in% 4:5, c08_02 %in% 4:5, c08_03 %in% 4:5, c08_04 %in% 4:5, by = c(ola, quintil), na.rm = TRUE) %>% 
+                       levels = c('c18_04 %in% 4:5', 'c18_05 %in% 4:5', 'c18_06 %in% 4:5', 'c18_07 %in% 4:5', 'c18_08 %in% 4:5'),
+                       labels = c('Mas que derechos\nnecesitamos mun\ngobierno firme',
+                                  'Pais necesita\nun mandatario\nfuerte',
+                                  'Obediencia y respeto\nes importante que\naprendan los niños',
+                                  'Obediencia y\ndisciplina son claves\npara buena vida',
+                                  'El cambio\nsocial es\nposible'))) %>% 
+  filter(!prop_se == 0) %>% 
   drop_na() %>% 
-  mutate(name = factor(name, 
-                       levels = c('c08_01 %in% 4:5', 'c08_02 %in% 4:5', 'c08_03 %in% 4:5', 'c08_04 %in% 4:5'),
-                       labels = c('Firmado una carta o\npetición apoyando\nuna causa',
-                                  'Asistido a una marcha\no manifestación política',
-                                  'Participado en\nuna huelga',
-                                  'Usado las RR.SS para expresar\nsu opinión en temas públicos'))) %>% 
-  filter(!prop_se == 0) %>%
-  ggplot(aes(y = prop, fill = quintil, x = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_col(position = 'dodge2') + 
-  geom_text(position = position_dodge(.9),
-            vjust = -.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,.5)) +
-  scale_fill_viridis_d(end = .85, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) +  
-    labs(y = NULL, x = NULL, title = NULL, 
-         subtitle = 'Porcentaje que responde que lo ha hecho "frecuente o muy frecuentemente"', 
-         caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
-
-```
-
-## 3.2. Solidaridad social
-
-```{r solidaridad-ola, fig.cap = 'Solidaridad social según ola'}
-
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c07_05, c07_06, c07_07, c07_08)) %>% 
-  as_label(ola) %>% 
-  prop_list(c07_05 == 3, c07_06 == 3, c07_07 == 3, c07_08 == 3, by = ola, na.rm = TRUE) %>% 
-  mutate(name = factor(name, 
-                       levels = c('c07_05 == 3', 'c07_06 == 3', 'c07_07 == 3', 'c07_08 == 3'),
-                       labels = c('Dono dinero a caridad',
-                                  'Presto $10,000 o mas',
-                                  'Converso con persona\nen problemas o deprimida',
-                                  'Ayudo a alguien a\nconseguir trabajo'))) %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_text_repel(nudge_y = .025, size = 3, color = 'black') +
-  geom_point(size = 1.75) + 
-  geom_line() + 
-  scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
-  scale_color_viridis_d(begin = .22, end = .88, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) + 
-  labs(x = NULL, y = NULL, title = NULL, 
-       subtitle = 'Porcentaje que lo ha hecho más de dos veces', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin
-       atrición entre olas. N=7.442 (1.513 individuos)')
-
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+    scale_color_viridis_d(begin = .00, end = .99, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
 
-```{r solidaridad-ola-zona, fig.cap = 'Solidaridad social según ola y zona geográfica'}
-
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c07_05, c07_06, c07_07, c07_08)) %>% 
+```{r auto-sexo}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_04, c18_05, c18_06, c18_07, c18_08, c25)) %>% 
   as_label(ola) %>% 
-  mutate(zona1 = factor(car::recode(region_cod, "c(1,2,3,4,15)=1; c(5,6,7,8,16)=2; c(9,10,11,12,14)=3; 13=4"),
-                        levels = c(1,2,3,4), 
-                        labels = c("Norte","Centro","Sur","Metropolitana"))) %>% 
-  prop_list(c07_05 == 3, c07_06 == 3, c07_07 == 3, c07_08 == 3, by = c(ola, zona1), na.rm = TRUE) %>% 
+  prop_list(c18_05 %in% 4:5, c18_08 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c07_05 == 3', 'c07_06 == 3', 'c07_07 == 3', 'c07_08 == 3'),
-                       labels = c('Dono dinero a caridad',
-                                  'Presto $10,000 o mas',
-                                  'Converso con persona\nen problemas o deprimida',
-                                  'Ayudo a alguien a\nconseguir trabajo'))) %>% 
+                       levels = c('c18_05 %in% 4:5', 'c18_08 %in% 4:5'),
+                       labels = c('Pais necesita\nun mandatario\nfuerte',
+                                  'El cambio\nsocial es\nposible'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r auto-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_04, c18_05, c18_06, c18_07, c18_08, c25)) %>% 
+  as_label(ola) %>% 
+  prop_list(c18_05 %in% 4:5, c18_08 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c18_05 %in% 4:5', 'c18_08 %in% 4:5'),
+                       labels = c('Pais necesita\nun mandatario\nfuerte',
+                                  'El cambio\nsocial es\nposible'))) %>%  
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r auto-zona}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_04, c18_05, c18_06, c18_07, c18_08, c25)) %>% 
+  as_label(ola) %>% 
+  prop_list(c18_05 %in% 4:5, c18_08 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c18_05 %in% 4:5', 'c18_08 %in% 4:5'),
+                       labels = c('Pais necesita\nun mandatario\nfuerte',
+                                  'El cambio\nsocial es\nposible'))) %>%  
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
@@ -1072,92 +884,465 @@ elsoc_long_2016_2021 %>%
     scale_y_continuous(labels = scales::percent,
                        limits = c(0,1)) +
   facet_wrap(.~ zona1) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que lo ha hecho más de dos veces', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
 ```
 
-```{r solidaridad-ola-estrato, fig.cap = 'Solidaridad social según ola y tipo de ciudad'}
-
-elsoc_long_2016_2021 %>%
-  filter(tipo_atricion == 1 & !is_nsnr(c07_05, c07_06, c07_07, c07_08)) %>% 
+```{r auto-educ}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c18_04, c18_05, c18_06, c18_07, c18_08, c25)) %>% 
   as_label(ola) %>% 
-  mutate(estrato = factor(estrato, levels = c(1,2,3,4,5,6),
-                          labels = c('Gran\nSantiago', 'Gran\nValparaíso', 'Gran\nConcepción',
-                                     'Ciudades\ngrandes', 'Ciudades\nmedianas', 'Ciudades\npequeñas')))  %>% 
-  prop_list(c07_05 == 3, c07_06 == 3, c07_07 == 3, c07_08 == 3, by = c(ola, estrato), na.rm = TRUE) %>% 
+  prop_list(c18_05 %in% 4:5, c18_08 %in% 4:5, by = c(ola, educ), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c07_05 == 3', 'c07_06 == 3', 'c07_07 == 3', 'c07_08 == 3'),
-                       labels = c('Dono dinero a caridad',
-                                  'Presto $10,000 o mas',
-                                  'Converso con persona\nen problemas o deprimida',
-                                  'Ayudo a alguien a\nconseguir trabajo'))) %>% 
+                       levels = c('c18_05 %in% 4:5', 'c18_08 %in% 4:5'),
+                       labels = c('Pais necesita\nun mandatario\nfuerte',
+                                  'El cambio\nsocial es\nposible'))) %>%  
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
   ggplot(aes(y = prop, x = ola, color = name, group = name,
                label = scales::percent(prop, accuracy = .1))) +
     theme_bw() +  
     geom_line() +
     geom_point(size = 1.75) +
     scale_y_continuous(labels = scales::percent,
-                       limits = c(0,.7)) +
-  facet_wrap(.~ estrato) +
-    scale_color_viridis_d(begin = .1, end = .88, option = 'viridis') +
+                       limits = c(0,1)) +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
     geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
     theme(plot.caption = element_text(hjust = 0),
           legend.position = 'top',
           legend.title = element_blank())  + 
-  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que lo ha hecho más de dos veces', 
-       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+### 1.2. Democracia versus autoritarismo
+
+```{r dvsa-olas, fig.cap = 'Grado de identificación con el país según ola'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c25)) %>% 
+  mutate(c25 = factor(c25, labels = c("La democracia es\npreferible a cualquier\notra forma de gobierno",
+                                    "En algunas circunstancias,\nun gobierno autoritario puede\nser preferible a uno democratico",
+                                    "Da lo mismo un\nregimen democratico\nque uno autoritario",
+                                    "Ninguna "))) %>% 
+  as_label(ola) %>% 
+  prop(x = c25, by = ola, na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = ola, fill = c25, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'Stack') +
+  scale_fill_viridis_d(end = .85) +
+  geom_text(position = position_stack(vjust = .5),
+            size = 3, color = rep(c('white', 'white', 'black', 'black'), 6)) + 
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+labs(x  = NULL, y = NULL, title = NULL,
+     caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r dvsa-genero}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c25)) %>% 
+  as_label(ola) %>% 
+  prop(c25 == 2, by = c(ola, sexo), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = sexo, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde:\n"En algunas circunstancias, un gobierno autoritario puede  preferible a uno democratico"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+```
+
+```{r dvsa-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c25)) %>% 
+  as_label(ola) %>% 
+  prop(c25 == 2, by = c(ola, edad), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = edad, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde:\n"En algunas circunstancias, un gobierno autoritario puede  preferible a uno democratico"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+```
+
+```{r dvsa-zona, fig.cap = 'Nivel identificación con el país  según ola y zona, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c25)) %>% 
+  as_label(ola) %>% 
+  prop(c25 == 2, by = c(ola, zona1), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = zona1, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde:\n"En algunas circunstancias, un gobierno autoritario puede  preferible a uno democratico"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+```
+
+```{r dvsa-educ, fig.cap = 'Nivel identificación con el país  según educ de ingresos y ola del estudio, porcentaje que responde "De acuerdo o totalmente de acuerdo"'}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & ola %in% 1:6, !is_nsnr(c25)) %>% 
+  as_label(ola) %>% 
+  prop(c25 == 2, by = c(ola, educ), na.rm = TRUE) %>% 
+  ggplot(aes(y = prop, x = educ, fill = ola, 
+             label = as.character(scales::percent(prop, accuracy = .1)))) + 
+  theme_bw() + 
+  geom_col(position = 'dodge2') +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0,1)) +
+  scale_fill_viridis_d(begin = .11, end = .88, direction = -1) +
+  theme(plot.caption = element_text(hjust = 0),
+        legend.position = 'top',
+        legend.title = element_blank()) +
+  geom_text(vjust = -0.8,
+            position = position_dodge(width = .9),
+            size = 2.5) +
+  labs(x = NULL, y = NULL, title = NULL,
+       subtitle = 'Porcentaje que responde:\n"En algunas circunstancias, un gobierno autoritario puede  preferible a uno democratico"',
+       caption = "Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=2.868 (1.503 individuos)")
+```
+
+## 2. Valoración de políticas de inclusión
+
+### 2.1. Políticas inclusivas
+
+```{r inclu-ola}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c37_01, c37_02, c37_03, c37_04, c37_05, c37_06, c37_07, c37_08)) %>% 
+  as_label(ola) %>% 
+  prop_list(c37_01 %in% 4:5, c37_02 %in% 4:5, c37_05 %in% 4:5, c37_06 %in% 4:5, by = ola, na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c37_01 %in% 4:5', 'c37_02 %in% 4:5', 'c37_05 %in% 4:5', 'c37_06 %in% 4:5'),
+                       labels = c('Adopcion\nhomoparental',
+                                  'Aborto',
+                                  'Restricciones\ningreso migrantes',
+                                  'Educacion sexual es\nresponsabilidad de padres'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+    scale_color_viridis_d(begin = .00, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 
 ```
 
-```{r solidaridad-quintil, fig.cap = 'Solidaridad social según ola y quintil (año 2021)'}
-
-elsoc_long_2016_2021 %>% 
-  filter(tipo_atricion == 1 & ola == 5, !is_nsnr(c07_05, c07_06, c07_07, c07_08),
-         !is_nsnr(m30, m30b, nhogar1, m46_nhogar, m54)) %>% 
+```{r inclu-sexo}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c37_01, c37_02, c37_03, c37_04, c37_05, c37_06, c37_07, c37_08)) %>% 
   as_label(ola) %>% 
-  mutate(
-  m30 = as.numeric(car::recode(m30, "1 = 110000; 2 = 251000; 
-  3 = 305000; 4 = 355000; 5 = 400000; 
-  6 = 445000; 7 = 490000; 8 = 535000; 9 = 585000; 10 = 640000; 
-  11 = 700000; 12 = 765000; 13 = 845000; 14 = 935000; 15 = 1040000;
-  16 = 1180000; 17 = 1375000; 18 = 1670000; 19 = 2275000; 20 = 2700000; NA = NA")),
-  m30b = as.numeric(car::recode(m30b, "1 = 170000; 2 = 300000; 3 = 400000; 4 = 600000; 5 = 1200000; NA = NA")),
-  m29_imp = ifelse(!is_nsnr(m29), m29, ifelse(ola == 5, m30b, m30)),
-  nhogar = case_when(ola == 1 ~ nhogar1,
-                     ola == 2 ~ m46_nhogar,
-                     TRUE ~ m54),
-  ypc = m29_imp / nhogar) %>% 
-  group_by(ola) %>% 
-  mutate(quintil = xtile(ypc, n = 5, wt = ponderador02),
-         quintil = factor(quintil, levels = 1:5, labels = glue::glue('Quintil {1:5}'))) %>%
-  ungroup() %>% 
-  prop_list(c07_05 == 3, c07_06 == 3, c07_07 == 3, c07_08 == 3, by = c(ola, quintil), na.rm = TRUE) %>% 
-  drop_na() %>% 
+  prop_list(c37_01 %in% 4:5, c37_02 %in% 4:5, c37_05 %in% 4:5, c37_06 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
   mutate(name = factor(name, 
-                       levels = c('c07_05 == 3', 'c07_06 == 3', 'c07_07 == 3', 'c07_08 == 3'),
-                       labels = c('Dono dinero a caridad',
-                                  'Presto $10,000 o mas',
-                                  'Converso con persona\nen problemas o deprimida',
-                                  'Ayudo a alguien a\nconseguir trabajo'))) %>% 
-  ggplot(aes(y = prop, fill = quintil, x = name,
-             label = scales::percent(prop, accuracy = .1))) +
-  theme_bw() + 
-  geom_col(position = 'dodge2') + 
-  geom_text(position = position_dodge(.9),
-            vjust = -.5,
-            size = 3) +
-  scale_y_continuous(labels = scales::percent, limits = c(0,1)) +
-  scale_fill_viridis_d(end = .85, option = 'viridis') +
-  theme(plot.caption = element_text(hjust = 0),
-        legend.position = 'top',
-        legend.title = element_blank()) +  
-    labs(y = NULL, x = NULL, title = NULL, 
-         subtitle = 'Porcentaje que lo ha hecho más de dos veces', 
-         caption = 'Fuente: Elaboración propia en base a datos ELSOC 2021.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.308 (1.513 individuos)')
+                       levels = c('c37_01 %in% 4:5', 'c37_02 %in% 4:5', 'c37_05 %in% 4:5', 'c37_06 %in% 4:5'),
+                       labels = c('Adopcion\nhomoparental',
+                                  'Aborto',
+                                  'Restricciones\ningreso migrantes',
+                                  'Educacion sexual es\nresponsabilidad de padres'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
 
+```{r inclu-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c37_01, c37_02, c37_03, c37_04, c37_05, c37_06, c37_07, c37_08)) %>% 
+  as_label(ola) %>% 
+  prop_list(c37_01 %in% 4:5, c37_02 %in% 4:5, c37_05 %in% 4:5, c37_06 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c37_01 %in% 4:5', 'c37_02 %in% 4:5', 'c37_05 %in% 4:5', 'c37_06 %in% 4:5'),
+                       labels = c('Adopcion\nhomoparental',
+                                  'Aborto',
+                                  'Restricciones\ningreso migrantes',
+                                  'Educacion sexual es\nresponsabilidad de padres'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r inclu-zona}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c37_01, c37_02, c37_03, c37_04, c37_05, c37_06, c37_07, c37_08)) %>% 
+  as_label(ola) %>% 
+  prop_list(c37_01 %in% 4:5, c37_02 %in% 4:5, c37_05 %in% 4:5, c37_06 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c37_01 %in% 4:5', 'c37_02 %in% 4:5', 'c37_05 %in% 4:5', 'c37_06 %in% 4:5'),
+                       labels = c('Adopcion\nhomoparental',
+                                  'Aborto',
+                                  'Restricciones\ningreso migrantes',
+                                  'Educacion sexual es\nresponsabilidad de padres'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ zona1) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
+```
+
+```{r inclu-educ}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(c37_01, c37_02, c37_03, c37_04, c37_05, c37_06, c37_07, c37_08)) %>% 
+  as_label(ola) %>% 
+  prop_list(c37_01 %in% 4:5, c37_02 %in% 4:5, c37_05 %in% 4:5, c37_06 %in% 4:5, by = c(ola, educ), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('c37_01 %in% 4:5', 'c37_02 %in% 4:5', 'c37_05 %in% 4:5', 'c37_06 %in% 4:5'),
+                       labels = c('Adopcion\nhomoparental',
+                                  'Aborto',
+                                  'Restricciones\ningreso migrantes',
+                                  'Educacion sexual es\nresponsabilidad de padres'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+### 2.2.Derechos sociales
+
+```{r ddss-ola}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(d02_01, d02_02, d02_03, r18_02)) %>% 
+  as_label(ola) %>% 
+  prop_list(d02_01 %in% 4:5, d02_02 %in% 4:5, d02_03 %in% 4:5, r18_02 %in% 4:5, by = ola, na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('d02_01 %in% 4:5','d02_02 %in% 4:5', 'd02_03 %in% 4:5','r18_02 %in% 4:5'),
+                       labels = c('Justicia distributiva\nen pensiones',
+                                  'Justicia distributiva\nen educacion',
+                                  'Justicia distributiva\nen salud',
+                                  'Migrantes tenga acceso\na salud igualitario'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+    scale_color_viridis_d(begin = .00, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
+```
+
+```{r ddss-sexo}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(d02_01, d02_02, d02_03, r18_02)) %>% 
+  as_label(ola) %>% 
+  prop_list(d02_01 %in% 4:5, d02_02 %in% 4:5, d02_03 %in% 4:5, r18_02 %in% 4:5, by = c(ola, sexo), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('d02_01 %in% 4:5','d02_02 %in% 4:5', 'd02_03 %in% 4:5','r18_02 %in% 4:5'),
+                       labels = c('Justicia distributiva\nen pensiones',
+                                  'Justicia distributiva\nen educacion',
+                                  'Justicia distributiva\nen salud',
+                                  'Migrantes tenga acceso\na salud igualitario'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ sexo) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r ddss-edad}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(d02_01, d02_02, d02_03, r18_02)) %>% 
+  as_label(ola) %>% 
+  prop_list(d02_01 %in% 4:5, d02_02 %in% 4:5, d02_03 %in% 4:5, r18_02 %in% 4:5, by = c(ola, edad), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('d02_01 %in% 4:5','d02_02 %in% 4:5', 'd02_03 %in% 4:5','r18_02 %in% 4:5'),
+                       labels = c('Justicia distributiva\nen pensiones',
+                                  'Justicia distributiva\nen educacion',
+                                  'Justicia distributiva\nen salud',
+                                  'Migrantes tenga acceso\na salud igualitario'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ edad) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+```
+
+```{r ddss-zona}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(d02_01, d02_02, d02_03, r18_02)) %>% 
+  as_label(ola) %>% 
+  prop_list(d02_01 %in% 4:5, d02_02 %in% 4:5, d02_03 %in% 4:5, r18_02 %in% 4:5, by = c(ola, zona1), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('d02_01 %in% 4:5','d02_02 %in% 4:5', 'd02_03 %in% 4:5','r18_02 %in% 4:5'),
+                       labels = c('Justicia distributiva\nen pensiones',
+                                  'Justicia distributiva\nen educacion',
+                                  'Justicia distributiva\nen salud',
+                                  'Migrantes tenga acceso\na salud igualitario'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>%  
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ zona1) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
+
+```
+
+```{r ddss-educ}
+elsoc_long %>% 
+  filter(tipo_atricion == 1 & !is_nsnr(d02_01, d02_02, d02_03, r18_02)) %>% 
+  as_label(ola) %>% 
+  prop_list(d02_01 %in% 4:5, d02_02 %in% 4:5, d02_03 %in% 4:5, r18_02 %in% 4:5, by = c(ola, educ), na.rm = TRUE) %>% 
+  mutate(name = factor(name, 
+                       levels = c('d02_01 %in% 4:5','d02_02 %in% 4:5', 'd02_03 %in% 4:5','r18_02 %in% 4:5'),
+                       labels = c('Justicia distributiva\nen pensiones',
+                                  'Justicia distributiva\nen educacion',
+                                  'Justicia distributiva\nen salud',
+                                  'Migrantes tenga acceso\na salud igualitario'))) %>% 
+  filter(!prop_se == 0) %>% 
+  drop_na() %>% 
+  ggplot(aes(y = prop, x = ola, color = name, group = name,
+               label = scales::percent(prop, accuracy = .1))) +
+    theme_bw() +  
+    geom_line() +
+    geom_point(size = 1.75) +
+    scale_y_continuous(labels = scales::percent,
+                       limits = c(0,1)) +
+  facet_wrap(.~ educ) +
+    scale_color_viridis_d(begin = .11, end = .88, option = 'viridis') +
+    geom_text_repel(size = 3, nudge_y = .02, color = 'black') +
+    theme(plot.caption = element_text(hjust = 0),
+          legend.position = 'top',
+          legend.title = element_blank())  + 
+  labs(x  = NULL, y = NULL, title = NULL, subtitle = 'Porcentaje que responde de acuerdo o muy de acuerdo', 
+       caption = 'Fuente: Elaboración propia en base a datos ELSOC 2016-2022.\nNota: Se consideran observaciones de individuos sin atrición entre olas. N=7.462 (1.513 individuos)')
 ```
